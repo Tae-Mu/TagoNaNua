@@ -63,4 +63,4 @@ gradle/wrapper/                      # Gradle Wrapper 추가 예정
 
 `com.gatita`는 폴더 구성을 위한 임시 패키지명입니다. 앱 식별자와 최종 패키지명은 Android 프로젝트 설정 시 확정합니다. 빈 폴더의 `.gitkeep`은 Git에 폴더를 보존하기 위한 파일입니다.
 
-설계 세부 사항은 [프로젝트 설계](docs/architecture.md)를 참고합니다.
+상세 기획·설계·테스트·보안 문서는 [옵시디언 보관함](.codex/docs/index.md)에서 관리합니다. Obsidian의 **폴더를 보관함으로 열기**에서 이 프로젝트의 `.codex/docs/`를 선택하세요. Codex는 [AGENTS.md](AGENTS.md)에 연결된 같은 문서를 읽습니다.

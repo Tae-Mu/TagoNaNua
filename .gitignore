@@ -17,3 +17,8 @@ captures/
 .env
 .env.*
 !.env.example
+
+# Obsidian personal state and trash
+.codex/docs/.obsidian/workspace*.json
+.codex/docs/.obsidian/cache/
+.codex/docs/.trash/
