@@ -1,6 +1,13 @@
 # TAGO HTML 기준 API·함수·테이블 명세 v0.1
 
-작성일: 2026-11-08. 상태: 구현 전 설계 초안. Compose 퍼블리싱 완료나 실제 차량 연동 완료를 의미하지 않는다.
+작성일: 2026-11-08. 상태(2026-11-09 갱신): 설계 명세이며 **핵심 결제액 흐름만 부분 구현**되었다. 이 명세 전체가 구현된 것은 아니다. Compose 퍼블리싱 완료나 실제 차량 연동 완료를 의미하지 않는다.
+
+**구현 현황 (2026-11-09, 코드 기준. 새 구현은 `:app:assembleDebug`만 성공했고 테스트는 실행하지 않았다)**
+
+- 구현: 비용 FUEL/PARKING/TOLL/OTHER 등록·수정·삭제·포함 선택, 포함 합계 정산, 주유량 표시, 운전자 포함/제외와 정수 원 나머지 배분, 정산 인원 변경, 미리보기, expectedRevision 기반 확정(제외 비용 포함 스냅샷·표시 이름 고정), 정산 요약 텍스트·QR, 월별 내역과 상태 필터, Room v2(v1 추정 정산은 legacy로 보존), 요청 ID 기반 중복 방지(costs·payment_settlements), 빈 여행 닫기(`discardEmptyTrip`: 진행 중이며 구간·비용·거리가 없는 여행 한 건만 확인 후 삭제, 홈 이동. `meta`·command receipt 없이 tripId만 받고 `Unit`을 반환하며 실패 코드는 TRIP_NOT_EMPTY/TRIP_NOT_FOUND/TRIP_NOT_IN_PROGRESS/TRIP_LOCKED).
+- **미구현 제안**: 설정 화면·app_settings·설정 초기화, 잠시 멈춤/이어가기(PAUSED), 일반 여행 삭제(`deleteTrip`, 완료·확정 여행 삭제 포함), 차량 PARKED 상태 확인에 의한 편집 차단(VEHICLE_NOT_PARKED), command_receipts 테이블과 ALREADY_APPLIED, 실제 Pleos VehicleDataSource.
+- 명세와 다른 구현: UUID 대신 Long 자동증가 ID, 상태명 IN_PROGRESS/FINISHED/SETTLED, active_trip 테이블 대신 trips.activeSlot 유일 인덱스. 차이는 [database.md](database.md)에 기록한다.
+- 이 명세의 상세 항목을 구현 여부 확인 없이 완료로 간주하지 않는다. 구현 상태의 기준은 README.md와 실제 코드다.
 
 ## 1. 기준과 범위
 
@@ -26,7 +33,7 @@
 | 설정 | 표시 이름, 새 여행의 정산 기본값, 화면 모드. 기존 확정 내역 변경 금지 |
 | 등록 후 이동 | 기록에서 진입하면 기록/멈춤 화면, 내역에서 진입하면 내역으로 복귀 |
 
-기존 `planning.md`, `architecture.md`, `database.md`, `testing.md`의 예상 유류비·fuel_prices·구간별 정산 계산은 이전 설계다. 이 문서는 **최신 HTML의 결제액 방식에 대한 후속 구현 기준 초안**이며 기존 문서를 무단으로 덮어쓰지 않는다. 실제 개발 착수 시 해당 문서를 결제액 방식으로 함께 개정해야 한다.
+`planning.md`, `architecture.md`, `database.md`, `testing.md`, `decisions.md`는 2026-11-09에 이 결제액 방식을 현재 제품으로 하여 개정했다. 예상 유류비·fuel_prices·구간별 정산 계산은 이전 설계이며 v1 이력(legacy)으로만 남는다. 이 문서는 후속 구현 기준이며 위 "구현 현황"에 적은 미구현 제안은 여전히 설계 상태다.
 
 ## 3. 상태와 사용자 흐름
 

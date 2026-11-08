@@ -7,7 +7,7 @@ feature/, navigation/, core/ui/, res/와 UI 진입 파일. ViewModel과 UiState�
 ## 구현 규칙
 
 - Screen은 상태를 표시하고 이벤트를 전달한다. ViewModel은 UseCase나 Repository 인터페이스를 통해 상태를 관리한다.
-- DAO·Pleos SDK 직접 호출과 화면 내부 금액 계산을 피한다.
+- DAO·Pleos SDK 직접 호출과 화면 내부 금액 계산을 피한다. 주유량 표시도 도메인 값을 사용한다.
 - 비동기 작업의 로딩·성공·실패를 표현하고 중복 시작·종료·확정 조작을 막는다.
 - 회전이나 화면 재생성과 프로세스 재시작을 구분한다. 영속 여행 상태는 Room에서 복구한다.
 - 접근성 설명, 긴 문구, 큰 금액, 내비게이션 복귀 시 상태를 확인한다.

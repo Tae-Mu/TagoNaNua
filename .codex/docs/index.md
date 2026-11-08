@@ -5,7 +5,7 @@
 - [기획](planning.md)
 - [아키텍처](architecture.md)
 - [DB 설계](database.md)
-- [HTML 기준 API·함수·테이블 명세](html-api-spec.md) — 최신 결제액 방식 설계 초안
+- [HTML 기준 API·함수·테이블 명세](html-api-spec.md) — 결제액 방식 명세(핵심 흐름 부분 구현, 일부 제안 미구현)
 - [테스트 전략](testing.md)
 - [보안 10대 규칙](security.md)
 - [결정 기록](decisions.md)
