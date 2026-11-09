@@ -127,7 +127,7 @@ class RoomPersistenceTest {
 
         val wiring = Wiring(db)
         val restored = wiring.restore()
-        assertEquals(started, restored)
+        assertEquals(started.copy(revision = 1, updatedAtMillis = 2_000), restored)
         assertEquals(1, wiring.trips.getSegments(started.id).size)
     }
 

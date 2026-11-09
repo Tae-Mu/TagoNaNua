@@ -1,8 +1,8 @@
 # DB 설계
 
-Room을 통해 차량 내부 SQLite에 저장합니다. 현재 스키마 버전은 **2**이며 이력은 `app/schemas/com.gatita.data.local.AppDatabase/1.json`, `2.json`입니다. 컬럼 수준 상세는 [html-api-spec](html-api-spec.md) 7장(제안)과 실제 Room 엔티티를 함께 봅니다. 구현은 명세와 일부 다르며 차이는 아래에 적었습니다.
+Room을 통해 차량 내부 SQLite에 저장합니다. 현재 스키마 버전은 **4**이며 이력은 `app/schemas/com.gatita.data.local.AppDatabase/1.json`~`4.json`입니다. 컬럼 수준 상세는 [html-api-spec](html-api-spec.md) 7장(제안)과 실제 Room 엔티티를 함께 봅니다. 구현은 명세와 일부 다르며 차이는 아래에 적었습니다.
 
-## 현재 테이블 (v2)
+## 현재 테이블 (v4)
 
 | 테이블 | 용도 | 비고 |
 |---|---|---|
@@ -48,3 +48,11 @@ Room을 통해 차량 내부 SQLite에 저장합니다. 현재 스키마 버전�
 | 모든 FK CASCADE(여행 삭제) | 일반 여행 삭제 기능 없음. 예외로 구간·비용이 없는 IN_PROGRESS 여행만 `TripDao.deleteIfEmptyActive`(조건부 DELETE, 트랜잭션 내 재검사)로 삭제. 구간·정산 FK는 RESTRICT, 비용 FK는 CASCADE라 조건에서 비용 부재를 반드시 확인 |
 
 Room 스키마 이력을 app/schemas에 관리하고 기존 데이터를 유지하는 마이그레이션을 작성합니다. 계산 정책은 [아키텍처](architecture.md)를 따릅니다.
+
+## v3/v4 설정과 여행 세션
+
+- v2→v3: `app_settings(id=1, driverName, includeDriver, appearance)` 추가. 행이 없으면 빈 이름·운전자 포함·시스템 모드. 저장·초기화는 이 행만 갱신하며 여행을 지우지 않는다.
+- v3→v4: `trip_sessions(tripId PK/FK CASCADE, pausedAt nullable, hidden Boolean)` 추가. `pausedAt`은 수동 일시정지 시각이고 null이면 재개 상태다. 여행의 IN_PROGRESS 상태와 activeSlot은 유지한다.
+- 목록 삭제는 `hidden=1`. 모든 내역/정산 목록을 제공하는 RoomTripLedgerRepository가 제외하며 원본 비용과 확정 스냅샷은 변경하지 않는다. 진행 중 여행은 숨길 수 없다. 빈 진행 중 여행의 기존 명시적 폐기는 그대로 유지한다.
+- 일시정지와 목록 숨김은 서로의 필드를 덮어쓰지 않는다. Pause는 주행 신호나 구간을 만들지 않고 시간·거리를 가공하지 않는다. 수동 구간 시간은 구간 경과 시간이다.
+- `1.json`~`4.json` 스키마를 보관하며 파괴적 fallback은 사용하지 않는다.

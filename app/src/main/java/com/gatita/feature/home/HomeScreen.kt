@@ -1,167 +1,115 @@
 package com.gatita.feature.home
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.gatita.core.ui.component.ActionButton
-import com.gatita.core.ui.component.EmptyBlock
-import com.gatita.core.ui.component.ErrorBlock
-import com.gatita.core.ui.component.ErrorMessage
-import com.gatita.core.ui.component.GatitaScaffold
-import com.gatita.core.ui.component.InfoCard
-import com.gatita.core.ui.component.LabeledValue
-import com.gatita.core.ui.component.LoadingBlock
-import com.gatita.core.ui.component.NumberField
-import com.gatita.core.ui.component.SecondaryButton
-import com.gatita.core.ui.component.SectionTitle
-import com.gatita.core.ui.component.SourceLabel
-import com.gatita.core.ui.component.TextInput
-import com.gatita.domain.model.Trip
+import com.gatita.R
+import com.gatita.core.ui.component.*
 import com.gatita.domain.model.TripSummary
 import com.gatita.feature.common.Formatters
+import com.gatita.feature.publishing.DepartureScreen
 
 @Composable
-fun HomeRoute(
-    viewModel: HomeViewModel,
-    onOpenTrip: (Long) -> Unit,
-    onOpenSettlement: (Long) -> Unit,
-    onOpenHistory: () -> Unit,
-) {
+fun HomeRoute(viewModel:HomeViewModel,onOpenTrip:(Long)->Unit,onOpenSettlement:(Long)->Unit,onOpenHistory:()->Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(viewModel) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is HomeEvent.OpenTrip -> onOpenTrip(event.tripId)
-            }
-        }
+    var startedId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var startedName by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(viewModel) {viewModel.events.collect {event-> if(event is HomeEvent.OpenTrip) startedId=event.tripId }}
+    Box(Modifier.fillMaxSize()) {
+        HomeContent(state,viewModel::onNameChange,viewModel::onStartOdometerChange,
+            {startedName=state.nameInput.ifBlank{"새로운 여행"};viewModel.startTrip()},viewModel::observe,
+            onOpenTrip,onOpenSettlement,onOpenHistory,viewModel::onPeopleChange,viewModel::onIncludeDriverChange)
+        startedId?.let { id-> DepartureScreen(startedName,onReveal={},onFinished={startedId=null;onOpenTrip(id)}) }
     }
-    HomeContent(
-        state = state,
-        onNameChange = viewModel::onNameChange,
-        onStartOdometerChange = viewModel::onStartOdometerChange,
-        onStartTrip = viewModel::startTrip,
-        onRetryLoad = viewModel::observe,
-        onOpenTrip = onOpenTrip,
-        onOpenSettlement = onOpenSettlement,
-        onOpenHistory = onOpenHistory,
-    )
 }
 
 @Composable
-fun HomeContent(
-    state: HomeUiState,
-    onNameChange: (String) -> Unit,
-    onStartOdometerChange: (String) -> Unit,
-    onStartTrip: () -> Unit,
-    onRetryLoad: () -> Unit,
-    onOpenTrip: (Long) -> Unit,
-    onOpenSettlement: (Long) -> Unit,
-    onOpenHistory: () -> Unit,
-) {
-    GatitaScaffold(title = "같이타 정산") {
-        InfoCard {
-            Text("직접 입력 모드", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "실제로 결제한 금액을 직접 입력해 나눕니다. 차량(Pleos) 데이터와 카드·하이패스 내역은 연동되어 있지 않으며, " +
-                    "이 앱은 계산 결과만 보여줄 뿐 송금이나 입금을 처리하지 않습니다.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-
+fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,onStartOdometerChange:(String)->Unit,
+    onStartTrip:()->Unit,onRetryLoad:()->Unit,onOpenTrip:(Long)->Unit,onOpenSettlement:(Long)->Unit,onOpenHistory:()->Unit,
+    onPeopleChange:(Int)->Unit={},onIncludeDriverChange:(Boolean)->Unit={}) {
+    var prepare by rememberSaveable { mutableStateOf(false) }
+    GatitaScaffold(if(prepare)"출발 준비" else "오늘은 어디로 떠나세요?",if(prepare)({prepare=false}) else null) {
         when {
             state.isLoading -> LoadingBlock("저장된 여행을 불러오는 중")
-            state.loadError != null -> ErrorBlock(state.loadError, onRetryLoad)
-            else -> {
-                val active = state.activeTrip
-                if (active != null) {
-                    ActiveTripCard(active, onContinue = { onOpenTrip(active.id) })
-                } else {
-                    StartTripCard(state, onNameChange, onStartOdometerChange, onStartTrip)
-                }
-
-                if (state.pendingTrips.isNotEmpty()) {
-                    SectionTitle("정산을 마치지 않은 여행")
-                    state.pendingTrips.forEach { trip ->
-                        PendingTripCard(trip, onOpen = { onOpenSettlement(trip.tripId) })
+            state.loadError!=null -> ErrorBlock(state.loadError,onRetryLoad)
+            state.activeTrip!=null -> {
+                val trip=state.activeTrip
+                Panel(Modifier.fillMaxWidth()) {
+                    Note("이어갈 여행이 있어요 · ${trip.tripDate}")
+                    Text(trip.name,fontSize=32.sp,fontWeight=FontWeight.Bold)
+                    Note("저장된 여행과 비용을 그대로 이어서 확인할 수 있어요.")
+                    Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                        Action("여행 이어가기",arrow=true){onOpenTrip(trip.id)}
+                        Action("여행 내역",primary=false){onOpenHistory()}
                     }
                 }
             }
+            prepare -> Panel(Modifier.fillMaxWidth()) {
+                TextInput("여행 이름 · 선택",state.nameInput,onNameChange,errorText=state.nameError,enabled=!state.isStarting)
+                StepperRow("함께 타는 인원",state.people,1..8,onPeopleChange,enabled=!state.isStarting)
+                SwitchRow("본인도 정산에 포함",state.includeDriver,onIncludeDriverChange,enabled=!state.isStarting&&state.people>1)
+                NumberField("출발 계기판 주행거리 (km)",state.startOdometerInput,onStartOdometerChange,
+                    errorText=state.startOdometerError,supporting="차량 연동 전이에요. 계기판의 누적 주행거리를 직접 입력해 주세요.",enabled=!state.isStarting)
+                state.startError?.let{ErrorMessage(it)}
+                ActionButton("여행 기록 시작",onStartTrip,busy=state.isStarting)
+            }
+            else -> Panel(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(18.dp)) {
+                        Note("TAGO · 타고, 나눠")
+                        Text("여행은 함께.\n정산은 가볍게.",fontSize=38.sp,lineHeight=46.sp,fontWeight=FontWeight.Bold)
+                        Note("함께 쓴 비용을 기록하고,\n함께 탄 만큼 편하게 나눠요.")
+                        Action("새 여행 준비",arrow=true){prepare=true}
+                    }
+                    Image(painterResource(R.drawable.vehicle),"차량 이미지 · 실제 연결 차량 아님",Modifier.weight(1f).height(220.dp))
+                }
+            }
         }
-
-        SecondaryButton("지난 여행·정산 내역", onOpenHistory)
+        if(!prepare) {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Text("이어서 할 일 · ${state.pendingTrips.size}",Modifier.weight(1f),fontWeight=FontWeight.Bold)
+                Action("전체 내역",primary=false,leadingIcon=R.drawable.ic_receipt){onOpenHistory()}
+            }
+            if(state.pendingTrips.isEmpty()&&!state.isLoading&&state.loadError==null) EmptyState("미뤄둔 정산이 없어요","여행을 마치면 이곳에서 정산을 이어갈 수 있어요.")
+            state.pendingTrips.forEach{SummaryRow(it){onOpenSettlement(it.tripId)}}
+        }
     }
 }
 
-@Composable
-private fun ActiveTripCard(trip: Trip, onContinue: () -> Unit) {
-    InfoCard {
-        Text("기록 중인 여행", style = MaterialTheme.typography.titleLarge)
-        Text(trip.name, style = MaterialTheme.typography.titleMedium)
-        Text(
-            "앱을 다시 켜도 저장된 여행과 비용을 이어서 볼 수 있습니다. 앱을 다시 켠 것만으로 지금 주행 중이라고 판단하지 않습니다.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        LabeledValue("시작 시각", Formatters.dateTime(trip.startedAtMillis))
-        SourceLabel(Formatters.source(trip.source))
-        ActionButton(text = "이어서 보기", onClick = onContinue)
+@Composable internal fun SummaryRow(trip:TripSummary,onOpen:()->Unit) {
+    Panel(Modifier.fillMaxWidth().clickable(onClick=onOpen)) {
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(24.dp)) {
+            Column {Text(trip.tripDate.dayOfMonth.toString(),fontSize=28.sp);Note("${trip.tripDate.monthValue}월")}
+            Column(Modifier.weight(1f)){Text(trip.name,fontSize=20.sp,fontWeight=FontWeight.SemiBold);Note("${trip.people}명 · 비용 ${trip.costCount}건 · ${Formatters.tripStatus(trip.status)}")}
+            AmountLabel(Formatters.won(trip.settlement?.totalWon?:trip.includedTotalWon).removeSuffix("원"),"원",24);Text("›")
+        }
     }
 }
-
-@Composable
-private fun PendingTripCard(trip: TripSummary, onOpen: () -> Unit) {
-    InfoCard {
-        Text(trip.name, style = MaterialTheme.typography.titleMedium)
-        Text("정산 대기 · ${trip.tripDate}", style = MaterialTheme.typography.bodyMedium)
-        LabeledValue("포함한 결제 비용 합계(미확정)", Formatters.won(trip.includedTotalWon))
-        Text(
-            "비용 ${trip.costCount}건 중 ${trip.includedCount}건 포함",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        SourceLabel(Formatters.source(trip.source))
-        ActionButton(text = "정산 이어서 하기", onClick = onOpen)
-    }
-}
-
-@Composable
-private fun StartTripCard(
-    state: HomeUiState,
-    onNameChange: (String) -> Unit,
-    onStartOdometerChange: (String) -> Unit,
-    onStartTrip: () -> Unit,
-) {
-    SectionTitle("새 여행 시작")
-    TextInput(
-        label = "여행 이름 (선택)",
-        value = state.nameInput,
-        onValueChange = onNameChange,
-        errorText = state.nameError,
-        supporting = "비우면 '새로운 여행'으로 저장합니다.",
-        enabled = !state.isStarting,
-    )
-    NumberField(
-        label = "계기판 주행거리 (km) · 수동 입력",
-        value = state.startOdometerInput,
-        onValueChange = onStartOdometerChange,
-        errorText = state.startOdometerError,
-        supporting = "계기판 값을 직접 입력하세요. 차량에서 자동으로 읽은 값이 아니며, 정산 금액에는 쓰이지 않는 기록입니다.",
-        enabled = !state.isStarting,
-        imeAction = ImeAction.Done,
-    )
-    state.startError?.let { ErrorMessage(it) }
-    ActionButton(
-        text = "여행 시작",
-        onClick = onStartTrip,
-        busy = state.isStarting,
-        busyText = "시작하는 중…",
-    )
-    if (state.pendingTrips.isEmpty()) {
-        EmptyBlock(
-            title = "기록된 여행이 없습니다",
-            description = "여행을 시작하고 주유·주차·톨비·기타 결제 금액을 입력하면, 정산에 포함한 금액의 합계를 인원수로 나눕니다.",
-        )
+@Composable fun SettlementListRoute(viewModel:HomeViewModel,onOpen:(Long)->Unit,onHistory:()->Unit) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    GatitaScaffold("정산") {
+        when {
+            state.isLoading->LoadingBlock("정산을 불러오는 중")
+            state.loadError!=null->ErrorBlock(state.loadError!!,viewModel::observe)
+            else->{
+                Panel(Modifier.fillMaxWidth()){Note("확인이 필요한 여행 · ${state.pendingTrips.size}건");Text(Formatters.won(state.pendingTotalWon),fontSize=40.sp);Note("정산에 포함한 실제 결제액 합계")}
+                if(state.pendingTrips.isEmpty())EmptyState("미뤄둔 정산이 없어요","확정한 정산은 여행 내역에서 확인하세요.")
+                state.pendingTrips.forEach{SummaryRow(it){onOpen(it.tripId)}}
+                if(state.settledTrips.isNotEmpty()) {
+                    Text("확정한 정산 · ${state.settledTrips.size}",fontWeight=FontWeight.Bold)
+                    state.settledTrips.forEach{SummaryRow(it){onOpen(it.tripId)}}
+                }
+                Action("전체 여행 내역",primary=false){onHistory()}
+            }
+        }
     }
 }

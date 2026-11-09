@@ -36,7 +36,7 @@ data class Trip(
     val endedAtMillis: Long?,
     val name: String = DEFAULT_TRIP_NAME,
     /** 여행 시작 시점 시간대 기준 날짜. 월별 조회 기준이며 이후 바뀌지 않는다. v1에서 올라온 여행은 UTC 기준이다. */
-    val tripDate: LocalDate = LocalDate.EPOCH,
+    val tripDate: LocalDate = LocalDate.ofEpochDay(0),
     val zoneId: String = "UTC",
     /** 시작 당시 차량 표시 이름. 차량 식별자가 아니며 확인되지 않았으면 빈 문자열이다. */
     val vehicleLabel: String = "",

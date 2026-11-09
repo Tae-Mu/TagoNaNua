@@ -31,7 +31,12 @@ class TripViewModelTest {
         tripId = tripId,
         trips = fixture.trips,
         saveSegmentUseCase = fixture.saveSegment,
-        finishTripUseCase = fixture.finishTrip,
+        ledgerRepository = fixture.payments,
+        observeCostLedger = fixture.observeLedger,
+        setCostIncluded = fixture.setIncluded,
+        deleteCost = fixture.deleteCost,
+        completeTripUseCase = fixture.complete,
+        discardEmptyTripUseCase = fixture.discard,
         clock = fixture.clock,
         attempts = attempts,
     )
@@ -76,11 +81,12 @@ class TripViewModelTest {
     }
 
     @Test
-    fun `blank efficiency is an error and is never silently saved as missing or zero`() = runTest {
+    fun `zero efficiency is rejected rather than treated as missing`() = runTest {
         val fixture = Fixture()
         val vm = viewModel(fixture, fixture.seedActiveTrip())
 
         vm.onEndOdometerChange("100")
+        vm.onEfficiencyChange("0")
         vm.saveSegment()
         advanceUntilIdle()
 
@@ -94,13 +100,13 @@ class TripViewModelTest {
         val vm = viewModel(fixture, fixture.seedActiveTrip())
 
         vm.onEndOdometerChange("100")
-        vm.onEfficiencyUnavailableChange(true)
+        vm.onEfficiencyChange("")
         vm.saveSegment()
         advanceUntilIdle()
 
         val saved = fixture.store.segments.single()
         assertNull(saved.efficiency)
-        assertEquals("연비 미측정", vm.state.value.segments.single().efficiency)
+        assertEquals("연비 미기록", vm.state.value.segments.single().efficiency)
     }
 
     @Test
@@ -167,34 +173,28 @@ class TripViewModelTest {
     }
 
     @Test
-    fun `finishing warns about unrecorded distance, finishes once and opens settlement`() = runTest {
+    fun `cost only trip completes once without fabricated distance`() = runTest {
         val fixture = Fixture()
         val tripId = fixture.seedActiveTrip()
-        val vm = viewModel(fixture, tripId)
-
-        vm.onFinishOdometerChange("80")
-        vm.requestFinish()
-        assertTrue(vm.state.value.showFinishConfirm)
-        assertNotNull(vm.state.value.finishConfirmWarning)
-
-        vm.confirmFinish()
-        vm.confirmFinish()
+        fixture.addCost(tripId, com.gatita.domain.model.CostInput(com.gatita.domain.model.CostKind.PARKING,3000),"cost-1")
+        val vm = viewModel(fixture,tripId)
+        vm.requestComplete()
+        assertTrue(vm.state.value.showCompleteConfirm)
+        vm.confirmComplete()
         advanceUntilIdle()
-
-        assertEquals(TripStatus.FINISHED, fixture.store.trips.getValue(tripId).status)
-        assertEquals(TripEvent.OpenSettlement(tripId), vm.events.first())
+        assertEquals(TripStatus.FINISHED,fixture.store.trips.getValue(tripId).status)
+        assertEquals(TripEvent.OpenSettlement(tripId),vm.events.first())
     }
 
     @Test
-    fun `finish with an invalid odometer does not open the confirmation`() = runTest {
-        val fixture = Fixture()
-        val vm = viewModel(fixture, fixture.seedActiveTrip())
-
-        vm.onFinishOdometerChange("")
-        vm.requestFinish()
-
-        assertFalse(vm.state.value.showFinishConfirm)
-        assertNotNull(vm.state.value.finishOdometerError)
+    fun `empty trip cannot complete and can be discarded`() = runTest {
+        val fixture=Fixture()
+        val id=fixture.seedActiveTrip()
+        val vm=viewModel(fixture,id)
+        vm.requestComplete();vm.confirmComplete();advanceUntilIdle()
+        assertEquals(TripStatus.IN_PROGRESS,fixture.store.trips.getValue(id).status)
+        vm.requestDiscard();vm.confirmDiscard();advanceUntilIdle()
+        assertFalse(fixture.store.trips.containsKey(id))
     }
 
     @Test

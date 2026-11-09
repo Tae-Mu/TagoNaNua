@@ -63,6 +63,7 @@ class SettlementViewModel(
     private val updateSplitPolicy: UpdateSplitPolicyUseCase,
     private val confirmPayment: ConfirmPaymentSettlementUseCase,
     private val attempts: AttemptStore,
+    private val settings: com.gatita.domain.repository.SettingsRepository? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SettlementUiState())
     val state: StateFlow<SettlementUiState> = _state.asStateFlow()
@@ -74,7 +75,12 @@ class SettlementViewModel(
     private val confirmGuard = SubmitGuard()
 
     init {
-        reload()
+        if(settings == null) reload() else viewModelScope.launch {
+            try { val defaults = settings.get(); _state.update { it.copy(driverNameInput=defaults.driverName) } }
+            catch(e: CancellationException) { throw e }
+            catch(e: Exception) { /* Defaults are optional; settlement remains available. */ }
+            reload()
+        }
     }
 
     /** 저장된 비용·분담 정책으로 미리보기를 다시 계산한다. 비용 화면에서 돌아올 때도 호출한다. */
@@ -298,6 +304,7 @@ class SettlementViewModel(
                     updateSplitPolicy = container.updateSplitPolicy,
                     confirmPayment = container.confirmPaymentSettlement,
                     attempts = SavedStateAttemptStore(handle),
+                    settings = container.settingsRepository,
                 )
             }
         }

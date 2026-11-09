@@ -8,6 +8,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -21,7 +22,7 @@ class HomeViewModelTest {
     val main = MainDispatcherRule()
 
     private fun viewModel(fixture: Fixture) = HomeViewModel(
-        trips = fixture.trips,
+        observeSettlementList = fixture.observeList,
         restoreActiveTrip = fixture.restoreActiveTrip,
         startTripUseCase = fixture.startTrip,
         clock = fixture.clock,
@@ -33,7 +34,7 @@ class HomeViewModelTest {
         val state = vm.state.value
         assertFalse(state.isLoading)
         assertNull(state.activeTrip)
-        assertEquals(emptyList<Any>(), state.unsettledTrips)
+        assertEquals(emptyList<Any>(), state.pendingTrips)
     }
 
     @Test
@@ -55,7 +56,7 @@ class HomeViewModelTest {
         val vm = viewModel(fixture)
 
         assertNull(vm.state.value.activeTrip)
-        assertEquals(listOf(tripId), vm.state.value.unsettledTrips.map { it.id })
+        assertEquals(listOf(tripId), vm.state.value.pendingTrips.map { it.tripId })
     }
 
     @Test
@@ -102,5 +103,21 @@ class HomeViewModelTest {
         assertNotNull(vm.state.value.startError)
         assertEquals("100", vm.state.value.startOdometerInput)
         assertFalse(vm.state.value.isStarting)
+    }
+    @Test
+    fun `saved driver default applies but solo travel always includes driver`() = runTest {
+        val f=Fixture()
+        val settings=object:com.gatita.domain.repository.SettingsRepository {
+            val value=com.gatita.domain.repository.AppSettings("민수",false,"주간")
+            override fun observe()=kotlinx.coroutines.flow.flowOf(value)
+            override suspend fun get()=value
+            override suspend fun save(settings:com.gatita.domain.repository.AppSettings) { }
+        }
+        val v=HomeViewModel(f.restoreActiveTrip,f.observeList,f.startTrip,f.clock,settings)
+        assertFalse(v.state.value.includeDriver)
+        v.onPeopleChange(1);v.onIncludeDriverChange(false)
+        assertTrue(v.state.value.includeDriver)
+        v.onPeopleChange(0);assertEquals(1,v.state.value.people)
+        v.onPeopleChange(9);assertEquals(1,v.state.value.people)
     }
 }

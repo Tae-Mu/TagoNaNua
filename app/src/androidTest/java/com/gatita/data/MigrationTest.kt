@@ -43,4 +43,20 @@ class MigrationTest {
             context.deleteDatabase(name)
         }
     }
+    @Test
+    fun version2CostsAndPolicySurviveSettingsAndSessionMigrations() {
+        val name="migration-v2-current.db"
+        helper.createDatabase(name,2).apply {
+            execSQL("INSERT INTO trips (id,status,source,startOdometerKm,startedAtMillis,activeSlot,people,includeDriver) VALUES (1,'IN_PROGRESS','MANUAL','1000',1000,1,4,0)")
+            execSQL("INSERT INTO costs (tripId,requestId,kind,amountWon,description,unitPrice,paidOn,included,createdAtMillis,updatedAtMillis) VALUES (1,'migration-cost','PARKING',3000,'시장',NULL,NULL,1,1000,1000)")
+            close()
+        }
+        val db=helper.runMigrationsAndValidate(name,4,true,*Migrations.ALL)
+        try {
+            db.query("SELECT amountWon,description FROM costs").use { check(it.moveToFirst());check(it.getLong(0)==3000L);check(it.getString(1)=="시장") }
+            db.query("SELECT people,includeDriver FROM trips WHERE id=1").use { check(it.moveToFirst());check(it.getInt(0)==4);check(it.getInt(1)==0) }
+            db.execSQL("INSERT INTO app_settings VALUES (1,'민수',0,'야간')")
+            db.execSQL("INSERT INTO trip_sessions VALUES (1,2000,0)")
+        } finally { db.close();InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(name) }
+    }
 }

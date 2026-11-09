@@ -46,6 +46,8 @@ data class CostFormUiState(
     val notFound: Boolean = false,
     val isEdit: Boolean = false,
 
+    val tripName: String = "",
+    val editable: Boolean = true,
     val kind: CostKind = CostKind.FUEL,
     val amountInput: String = "",
     val descriptionInput: String = "",
@@ -59,7 +61,15 @@ data class CostFormUiState(
     val paidOnError: String? = null,
     val isSaving: Boolean = false,
     val saveError: String? = null,
-)
+    val conflict: Boolean = false,
+) {
+    val fuelLiters: BigDecimal?
+        get() {
+            val amount=(InputParsers.wonAmount(amountInput) as? ParsedWon.Ok)?.value ?: return null
+            val price=(InputParsers.pricePerLiter(unitPriceInput) as? ParsedNumber.Ok)?.value ?: return null
+            return com.gatita.domain.model.FuelLiters.calculate(kind,BigDecimal.valueOf(amount),price)
+        }
+}
 
 sealed interface CostFormEvent {
     data object Saved : CostFormEvent
@@ -76,6 +86,7 @@ class CostFormViewModel(
     private val addCost: AddCostUseCase,
     private val updateCost: UpdateCostUseCase,
     private val attempts: AttemptStore,
+    private val trips: com.gatita.domain.repository.TripRepository? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(CostFormUiState(isEdit = costId != UNSAVED_ID, isLoading = costId != UNSAVED_ID))
     val state: StateFlow<CostFormUiState> = _state.asStateFlow()
@@ -84,15 +95,22 @@ class CostFormViewModel(
     val events: Flow<CostFormEvent> = _events.receiveAsFlow()
 
     private val saveGuard = SubmitGuard()
+    private var loadedRevision:Long? = null
+    private var saved = false
 
-    init {
-        if (costId != UNSAVED_ID) load()
-    }
+    init { if(costId!=UNSAVED_ID || trips!=null) load() }
 
     fun load() {
-        _state.update { it.copy(isLoading = true, loadError = null) }
+        _state.update { it.copy(isLoading = true, loadError = null, conflict=false, saveError=null) }
         viewModelScope.launch {
             try {
+                if(trips!=null) {
+                    val trip=trips.getTrip(tripId)
+                    loadedRevision=trip?.revision
+                    if(trip==null){_state.update{it.copy(isLoading=false,notFound=true)};return@launch}
+                    _state.update{it.copy(tripName=trip.name,editable=trip.status!=com.gatita.domain.model.TripStatus.SETTLED)}
+                }
+                if(costId==UNSAVED_ID){_state.update{it.copy(isLoading=false,loadError=null)};return@launch}
                 val cost = costs.get(costId)?.takeIf { it.tripId == tripId }
                 if (cost == null) {
                     _state.update { it.copy(isLoading = false, notFound = true) }
@@ -132,7 +150,7 @@ class CostFormViewModel(
 
     fun save() {
         val current = _state.value
-        if (current.isLoading || current.notFound || current.loadError != null) return
+        if (saved || current.isLoading || current.notFound || current.loadError != null || !current.editable) return
         if (!saveGuard.tryAcquire()) return
 
         val amount = InputParsers.wonAmount(current.amountInput)
@@ -169,10 +187,11 @@ class CostFormViewModel(
                 val result: DomainResult<Cost> = if (costId == UNSAVED_ID) {
                     addCost(tripId, input, requestId)
                 } else {
-                    updateCost(tripId, costId, input)
+                    updateCost(tripId, costId, input, expectedRevision=loadedRevision)
                 }
                 when (result) {
                     is DomainResult.Success -> {
+                        saved = true
                         attempts.put(KEY_REQUEST_ID, null)
                         _events.send(CostFormEvent.Saved)
                     }
@@ -181,6 +200,7 @@ class CostFormViewModel(
                         // REQUEST_ID_REUSED는 직전 시도가 이미 저장됐을 수 있다는 뜻이므로 ID를 유지한다.
                         if (result.error.code != ErrorCode.REQUEST_ID_REUSED) attempts.put(KEY_REQUEST_ID, null)
                         showFailure(result.error)
+                        if(result.error.code==ErrorCode.STALE_REVISION) _state.update { it.copy(conflict=true) }
                     }
                 }
             } catch (e: CancellationException) {
@@ -223,6 +243,7 @@ class CostFormViewModel(
                     addCost = container.addCost,
                     updateCost = container.updateCost,
                     attempts = SavedStateAttemptStore(handle),
+                    trips = container.tripRepository,
                 )
             }
         }

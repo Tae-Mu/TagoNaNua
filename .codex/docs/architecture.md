@@ -17,7 +17,7 @@ app 모듈 하나를 사용합니다.
 
 - GatitaApplication.kt, MainActivity.kt: 앱 초기화와 Compose 진입
 - di/AppContainer.kt: DB 및 저장소 객체 연결
-- data/local/AppDatabase.kt: Room DB(현재 버전 2)
+- data/local/AppDatabase.kt: Room DB(현재 버전 4)
 - data/local/migration/Migrations.kt: v1 → v2 마이그레이션
 - domain/calculator/PaymentSettlementCalculator.kt: 비용 합계·분담액·확정 스냅샷(현재 제품의 계산)
 - domain/calculator/ShareAllocator.kt: 정수 원 나머지 배분
@@ -59,3 +59,16 @@ app 모듈 하나를 사용합니다.
 - 자동 기록이 불가능한 경우 정차 후 수동 구간 저장 제공
 - 실제 차량 데이터와 샘플 데이터 출처 구분
 - html-api-spec의 PARKED 확인 후 비용 편집은 SDK 신호가 확정되기 전까지 미구현
+
+
+## 실제 앱 UI 연결 (2026-11-09)
+
+`AppNavHost`의 Route들은 기존 기능별 ViewModel을 유지하고 TAGO 퍼블리싱 컴포넌트를 재사용한다. `ConnectedShell`은 태블릿 사이드바 및 좁은 폭 하단 메뉴를 담당한다. 정산·내역·비용의 표시 데이터는 기존 UseCase/Room에서 가져온다. 샘플 `PublishingApp`은 런처와 분리된다. 화면 연결 범위와 차량 미연동 표현은 [연결 기록](publishing-integration-2026-11-09.md)에 정리했다.
+
+## 전체 연결 보완
+
+SettingsViewModel → SaveSettingsUseCase → SettingsRepository → Room으로 설정을 저장한다. 앱 루트는 ViewModel의 저장된 테마를 따른다. HomeViewModel은 새 여행의 운전자 기본값을, SettlementViewModel은 표시 이름 기본값을 읽는다. 이미 확정된 정산은 바꾸지 않는다.
+
+TripViewModel → SetTripPausedUseCase → TripSessionRepository로 수동 일시정지/재개를 저장한다. HistoryViewModel → HideTripUseCase는 완료 여행을 목록에서 숨기며 확정 불변 트리거를 우회하지 않는다. 숨김은 UI 확인을 거친다. 실제 영구 삭제 기능과 구별한다.
+
+비용 수정에 로드한 revision을 연결하고 충돌 시 입력을 보존한다. 성공한 비용 폼은 화면 이동 전에 재탭해도 두 번째 저장을 실행하지 않는다.

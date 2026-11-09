@@ -22,7 +22,7 @@ object SettlementSummary {
         val estimate = calc.method == CalculationMethod.REFERENCE_ESTIMATE
         val distance = calc.items.fold(java.math.BigDecimal.ZERO) { acc, item -> acc.add(item.distanceKm) }
         return buildString {
-            appendLine("[같이타 정산 요약]")
+            appendLine("[TAGO 정산 요약]")
             appendLine("확정일: ${Formatters.dateTime(settlement.confirmedAtMillis, zone)}")
             appendLine("총 유류비: ${Formatters.won(calc.totalCostWon)}" + if (estimate) " (추정)" else "")
             appendLine("인원: ${calc.headcount}명")

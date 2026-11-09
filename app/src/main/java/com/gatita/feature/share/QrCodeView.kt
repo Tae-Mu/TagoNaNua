@@ -25,8 +25,8 @@ private const val QUIET_ZONE_MODULES = 4
 fun QrCodeView(matrix: QrMatrix, contentDescription: String, modifier: Modifier = Modifier) {
     Canvas(
         modifier = modifier
-            .fillMaxWidth()
             .widthIn(max = 320.dp)
+            .fillMaxWidth()
             .aspectRatio(1f)
             .background(Color.White)
             .semantics { this.contentDescription = contentDescription },

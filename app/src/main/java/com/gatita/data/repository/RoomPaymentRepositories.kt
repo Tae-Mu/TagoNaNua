@@ -14,6 +14,7 @@ import com.gatita.domain.repository.PaymentSettlementRepository
 import com.gatita.domain.repository.TripLedgerRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 
 class RoomCostRepository(private val db: AppDatabase) : CostRepository {
     private val dao = db.costDao()
@@ -82,7 +83,7 @@ class RoomTripLedgerRepository(private val db: AppDatabase) : TripLedgerReposito
     ): Boolean = tripDao.updateSplitPolicy(tripId, people, includeDriver, expectedRevision, updatedAtMillis) == 1
 
     override fun observeSummaries(): Flow<List<TripSummary>> =
-        costDao.observeSummaries().map { rows -> rows.map { it.toDomain() } }
+        combine(costDao.observeSummaries(),db.tripSessionDao().observeHidden()) { rows,hidden -> rows.map { it.toDomain() }.filter { it.tripId !in hidden } }
 }
 
 class RoomPaymentSettlementRepository(private val db: AppDatabase) : PaymentSettlementRepository {

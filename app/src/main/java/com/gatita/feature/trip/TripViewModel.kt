@@ -63,12 +63,17 @@ data class SegmentRow(
 
 data class TripUiState(
     val isLoading: Boolean = true,
+    val pausedAt: Long? = null,
+    val isChangingPause: Boolean = false,
+    val pauseError: String? = null,
     val loadError: String? = null,
     val notFound: Boolean = false,
     val trip: Trip? = null,
     val ledger: CostLedger? = null,
     val segments: List<SegmentRow> = emptyList(),
     val lastRecordedKm: String? = null,
+    val recordedDistance: String? = null,
+    val recordedMinutes: Long? = null,
 
     /** 비용 포함 선택·삭제처럼 목록을 바꾸는 작업이 진행 중이다. */
     val isMutating: Boolean = false,
@@ -113,6 +118,8 @@ class TripViewModel(
     private val discardEmptyTripUseCase: DiscardEmptyTripUseCase,
     private val clock: Clock,
     private val attempts: AttemptStore,
+    private val sessions: com.gatita.domain.repository.TripSessionRepository? = null,
+    private val setPaused: com.gatita.domain.usecase.SetTripPausedUseCase? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(TripUiState())
     val state: StateFlow<TripUiState> = _state.asStateFlow()
@@ -128,6 +135,24 @@ class TripViewModel(
 
     init {
         observe()
+        sessions?.let { repo -> viewModelScope.launch {
+            repo.observePausedAt(tripId).catch { _state.update { it.copy(pauseError="일시정지 상태를 불러오지 못했어요.") } }
+                .collect { at -> _state.update { it.copy(pausedAt=at) } }
+        } }
+    }
+
+    fun changePaused(paused: Boolean) {
+        val action=setPaused ?: return
+        if(_state.value.isChangingPause || _state.value.isSavingSegment || _state.value.isCompleting) return
+        _state.update { it.copy(isChangingPause=true,pauseError=null) }
+        viewModelScope.launch {
+            try { when(val result=action(tripId,paused)) {
+                is DomainResult.Success -> Unit
+                is DomainResult.Failure -> _state.update { it.copy(pauseError=result.error.code.userMessage()) }
+            } } catch(e:CancellationException) { throw e }
+            catch(e:Exception) { _state.update { it.copy(pauseError="상태를 저장하지 못했어요. 다시 시도해 주세요.") } }
+            finally { _state.update { it.copy(isChangingPause=false) } }
+        }
     }
 
     /** 여행과 비용을 Room에서 구독한다. 비용 화면에서 돌아오면 자동으로 갱신된다. */
@@ -168,6 +193,8 @@ class TripViewModel(
                 trip = trip,
                 ledger = ledger.value,
                 segments = segments.map(::toRow),
+                recordedDistance = segments.takeIf { it.isNotEmpty() }?.sumOf { it.distanceKm }?.let(Formatters::km),
+                recordedMinutes = segments.takeIf { it.isNotEmpty() }?.sumOf { (it.endedAtMillis-it.startedAtMillis).coerceAtLeast(0) }?.div(60000),
                 lastRecordedKm = segments.maxByOrNull { s -> s.seq }?.endOdometerKm?.let(Formatters::km),
             )
         }
@@ -250,7 +277,7 @@ class TripViewModel(
     fun saveSegment() {
         val current = _state.value
         val trip = current.trip ?: return
-        if (trip.status != TripStatus.IN_PROGRESS) return
+        if (trip.status != TripStatus.IN_PROGRESS || current.pausedAt != null || current.isChangingPause) return
         if (!segmentGuard.tryAcquire()) return
 
         val end = InputParsers.odometerKm(current.endOdometerInput, "구간 종료 주행거리")
@@ -338,6 +365,8 @@ class TripViewModel(
             _state.update {
                 it.copy(
                     segments = segments.map(::toRow),
+                recordedDistance = segments.takeIf { it.isNotEmpty() }?.sumOf { it.distanceKm }?.let(Formatters::km),
+                recordedMinutes = segments.takeIf { it.isNotEmpty() }?.sumOf { (it.endedAtMillis-it.startedAtMillis).coerceAtLeast(0) }?.div(60000),
                     lastRecordedKm = segments.maxByOrNull { s -> s.seq }?.endOdometerKm?.let(Formatters::km),
                 )
             }
@@ -454,6 +483,8 @@ class TripViewModel(
                     discardEmptyTripUseCase = container.discardEmptyTrip,
                     clock = container.clock,
                     attempts = SavedStateAttemptStore(handle),
+                    sessions = container.tripSessionRepository,
+                    setPaused = container.setTripPaused,
                 )
             }
         }

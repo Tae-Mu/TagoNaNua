@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +36,16 @@ import com.gatita.domain.model.CostLimits
 import com.gatita.domain.model.PaymentPreview
 import com.gatita.feature.common.Formatters
 import com.gatita.feature.common.userMessage
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import com.gatita.core.ui.component.*
+import com.gatita.core.ui.theme.Navy
 
 @Composable
 fun SettlementRoute(
@@ -126,88 +137,61 @@ private fun PreviewBody(
     onEditCosts: () -> Unit,
 ) {
     val locked = state.isUpdatingPolicy || state.isConfirming
-
-    InfoCard {
-        Text("정산 총액 (포함한 실제 결제 금액의 합계)", style = MaterialTheme.typography.labelLarge)
-        Text(Formatters.won(preview.totalWon), style = MaterialTheme.typography.displaySmall)
-        Text(
-            "포함 ${preview.includedCount}건 / 등록 ${preview.registeredCount}건 · 주유 ${Formatters.won(preview.fuelTotalWon)}" +
-                " · 주차·톨비·기타 ${Formatters.won(preview.otherTotalWon)}",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Text(
-            "거리·연비·유가로 계산한 추정 금액은 더하지 않습니다.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-    }
-    SecondaryButton("비용 확인·수정·포함 선택", onEditCosts, enabled = !locked)
-
-    SectionTitle("나누기")
-    StepperRow(
-        label = "인원 (운전자 포함)",
-        value = preview.people,
-        range = CostLimits.MIN_PEOPLE..CostLimits.MAX_PEOPLE,
-        onValueChange = onPeopleChange,
-        enabled = !locked,
-    )
-    SwitchRow(
-        label = "운전자도 분담",
-        checked = preview.includeDriver,
-        onCheckedChange = onIncludeDriverChange,
-        enabled = !locked && preview.people > 1,
-        supporting = if (preview.people == 1) {
-            "1명이면 운전자 본인이 모두 부담하므로 항상 포함됩니다."
-        } else {
-            "끄면 운전자는 0원이고 동승자 ${preview.people - 1}명이 나눕니다."
-        },
-    )
-    if (state.isUpdatingPolicy) NoticeMessage("분담 방식을 저장하는 중…")
-    state.policyError?.let { ErrorMessage(it) }
-
-    SectionTitle("분담액")
-    TextInput(
-        label = "내 표시 이름 (선택)",
-        value = state.driverNameInput,
-        onValueChange = onDriverNameChange,
-        errorText = state.nameError,
-        supporting = "20자까지. 비우면 '나'. 확정하면 명세에 고정됩니다.",
-        enabled = !locked,
-    )
-    state.shares.forEach { share ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                share.label + if (share.isDriver && !preview.includeDriver) " (운전자 제외)" else "",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            Text(Formatters.won(share.amountWon), style = MaterialTheme.typography.titleMedium)
+    var breakdown by rememberSaveable { mutableStateOf(false) }
+    SurfaceSummary(preview)
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
+        Panel(Modifier.weight(1f)) {
+            SectionTitle("함께 나누는 기준")
+            StepperRow("함께 탄 인원",preview.people,1..8,onPeopleChange,enabled=!locked)
+            SwitchRow("본인도 정산에 포함",preview.includeDriver,onIncludeDriverChange,
+                enabled=!locked&&preview.people>1,supporting=if(preview.people==1)"혼자 여행할 때는 본인이 부담해요." else "끄면 동승자 ${preview.people-1}명이 나눠요.")
+            TextInput("내 이름 · 선택",state.driverNameInput,onDriverNameChange,errorText=state.nameError,enabled=!locked)
+            if(state.isUpdatingPolicy)Note("분담 방식을 저장하고 있어요…")
+            state.policyError?.let{ErrorMessage(it)}
+            Action("비용 내역 확인",primary=false,enabled=!locked,onClick=onEditCosts)
+        }
+        Panel(Modifier.weight(1f)) {
+            SectionTitle("각자 나눌 금액")
+            Note("${preview.splitPeople}명 · 원 단위로 나눠요")
+            val participantAmounts=preview.shares.filter{preview.includeDriver||!it.isDriver}.map{it.amountWon}
+            val minimum=participantAmounts.minOrNull()?:0
+            val maximum=participantAmounts.maxOrNull()?:0
+            Text(if(minimum==maximum)Formatters.won(minimum) else "${Formatters.won(minimum)} ~ ${Formatters.won(maximum)}",fontSize=26.sp)
+            TextButton({breakdown=!breakdown}){Text(if(breakdown)"개인별 명세 접기" else "개인별 전체 명세 보기")}
+            if(breakdown)state.shares.forEach {share->
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+                    Text(share.label+if(share.isDriver&&!preview.includeDriver)" (제외)" else "",Modifier.weight(1f))
+                    Text(Formatters.won(share.amountWon))
+                }
+            }
+            Note("나누고 남은 금액은 참여자 순서대로 1원씩 배분해요.")
+            HorizontalDivider()
+            Text("분담액 합계   ${Formatters.won(preview.totalWon)}",fontSize=20.sp)
         }
     }
-    Text(
-        "${preview.splitPeople}명이 나눕니다. 정수 원 단위로 나누고, 남는 원은 순서대로 1원씩 더해 합계가 총액과 같게 맞춥니다.",
-        style = MaterialTheme.typography.bodySmall,
-    )
+    Note("주행거리 ${preview.recording.distanceKm?.let{Formatters.km(it)}?:"기록 없음"} · ${Formatters.source(preview.recording.source)}")
+    state.loadError?.let{ErrorMessage(it)}
+    state.confirmError?.let{ErrorMessage(it)}
+    if(!preview.canConfirm)preview.blockingReason?.let{ErrorMessage(it.userMessage())}
+    ActionButton("이 금액으로 확정",onRequestConfirm,busy=state.isConfirming,
+        enabled=preview.canConfirm&&!locked&&state.nameError==null&&state.loadError==null)
+}
 
-    SectionTitle("기록 정보 (참고용)")
-    InfoCard {
-        LabeledValue(
-            "주행거리",
-            preview.recording.distanceKm?.let { Formatters.km(it) } ?: "기록 없음(0으로 보지 않음)",
-        )
-        Text(Formatters.quality(preview.recording.quality), style = MaterialTheme.typography.bodyMedium)
-        SourceLabel(Formatters.source(preview.recording.source))
-        Text("이 정보는 정산 금액에 영향을 주지 않습니다.", style = MaterialTheme.typography.bodySmall)
+@Composable private fun SurfaceSummary(preview:PaymentPreview) {
+    androidx.compose.material3.Surface(shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        border=androidx.compose.foundation.BorderStroke(1.dp,androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant)) {
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1.15f).fillMaxHeight().background(Navy).padding(28.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                Text("이번 여행에 함께 쓴 비용",color=Color(0xFFC5D9E8))
+                AmountLabel(Formatters.won(preview.totalWon).removeSuffix("원"),"원",44,Color.White)
+                Text("포함 ${preview.includedCount}건 / 등록 ${preview.registeredCount}건",color=Color(0xFFC5D9E8))
+            }
+            Column(Modifier.weight(1f).padding(28.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                Text("${preview.splitPeople}명이 함께 나눠요",fontSize=26.sp)
+                Note("주유 ${Formatters.won(preview.fuelTotalWon)}")
+                Note("주차·톨비·기타 ${Formatters.won(preview.otherTotalWon)}")
+                Note("정산에 포함한 실제 결제 금액을 나눠요.")
+            }
+        }
     }
-
-    state.confirmError?.let { ErrorMessage(it) }
-    if (!preview.canConfirm) {
-        preview.blockingReason?.let { ErrorMessage(it.userMessage()) }
-    }
-    ActionButton(
-        text = "정산 확정",
-        onClick = onRequestConfirm,
-        busy = state.isConfirming,
-        busyText = "확정하는 중…",
-        enabled = preview.canConfirm && !state.isUpdatingPolicy && state.nameError == null,
-    )
 }

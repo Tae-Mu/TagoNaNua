@@ -12,7 +12,7 @@ object PaymentSummaryFormatter {
     const val DISCLAIMER = "※ 계산 결과 공유용 요약입니다. 송금·입금 확인이 아닙니다."
 
     fun format(settlement: PaymentSettlement): String = buildString {
-        appendLine("[같이타 정산 요약]")
+        appendLine("[TAGO 정산 요약]")
         appendLine("여행: ${settlement.tripName} (${settlement.tripDate})")
         appendLine("총 결제액: ${won(settlement.totalWon)} (주유 ${won(settlement.fuelTotalWon)} · 기타 ${won(settlement.otherTotalWon)})")
         appendLine(

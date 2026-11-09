@@ -29,6 +29,8 @@ import com.gatita.data.local.migration.Migrations
 @Database(
     entities = [
         TripEntity::class,
+        com.gatita.data.local.entity.SettingsEntity::class,
+        com.gatita.data.local.entity.TripSessionEntity::class,
         SegmentEntity::class,
         FuelPriceEntity::class,
         SettlementEntity::class,
@@ -39,10 +41,12 @@ import com.gatita.data.local.migration.Migrations
         PaymentSettlementCostEntity::class,
         PaymentSettlementShareEntity::class,
     ],
-    version = 2,
+    version = 4,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun settingsDao(): com.gatita.data.local.dao.SettingsDao
+    abstract fun tripSessionDao(): com.gatita.data.local.dao.TripSessionDao
     abstract fun tripDao(): TripDao
     abstract fun settlementDao(): SettlementDao
     abstract fun costDao(): CostDao

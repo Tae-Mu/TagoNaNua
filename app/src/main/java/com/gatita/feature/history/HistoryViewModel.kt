@@ -59,12 +59,16 @@ data class HistoryUiState(
     val monthlyTripCount: Int = 0,
     val monthlyDistance: String = "",
     val monthlySettledCount: Int = 0,
+    val deleteTarget: HistoryRow? = null,
+    val deleting: Boolean = false,
+    val deleteError: String? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HistoryViewModel(
     private val observeHistory: ObserveTripHistoryUseCase,
     initialMonth: YearMonth,
+    private val hideTrip: com.gatita.domain.usecase.HideTripUseCase? = null,
 ) : ViewModel() {
     private val query = MutableStateFlow(initialMonth to HistoryFilter.ALL)
     private val _state = MutableStateFlow(HistoryUiState(month = initialMonth))
@@ -83,8 +87,31 @@ class HistoryViewModel(
             query
                 .flatMapLatest { (month, filter) -> observeHistory(month, filter) }
                 .catch { _state.update { it.copy(isLoading = false, error = LOAD_FAILURE_MESSAGE) } }
-                .collect { summary -> _state.update { summary.toState() } }
+                .collect { summary -> _state.update { old -> summary.toState().copy(deleteTarget=old.deleteTarget,deleting=old.deleting,deleteError=old.deleteError) } }
         }
+    }
+
+    fun requestDelete(row:HistoryRow) { if(!state.value.deleting) _state.update { it.copy(deleteTarget=row,deleteError=null) } }
+    fun dismissDelete() { if(!state.value.deleting) _state.update { it.copy(deleteTarget=null) } }
+    fun confirmDelete() {
+        val action=hideTrip ?: return
+        val target=state.value.deleteTarget ?: return
+        if(state.value.deleting) return
+        _state.update { it.copy(deleting=true,deleteError=null) }
+        viewModelScope.launch {
+            try { when(val result=action(target.tripId)) {
+                is com.gatita.domain.model.DomainResult.Success -> _state.update { it.copy(deleteTarget=null) }
+                is com.gatita.domain.model.DomainResult.Failure -> _state.update { it.copy(deleteError="진행 중인 여행은 먼저 마쳐 주세요.") }
+            } } catch(e:kotlinx.coroutines.CancellationException) { throw e }
+            catch(e:Exception) { _state.update { it.copy(deleteError="목록에서 삭제하지 못했어요. 다시 시도해 주세요.") } }
+            finally { _state.update { it.copy(deleting=false) } }
+        }
+    }
+
+    fun setMonth(month:YearMonth) {
+        if(query.value.first==month)return
+        query.update{month to it.second}
+        _state.update{it.copy(isLoading=true,month=month)}
     }
 
     fun previousMonth() = changeMonth(-1)
@@ -97,6 +124,7 @@ class HistoryViewModel(
     }
 
     fun setFilter(filter: HistoryFilter) {
+        if(query.value.second==filter)return
         query.update { (month, _) -> month to filter }
         _state.update { it.copy(isLoading = true, filter = filter) }
     }
@@ -154,6 +182,7 @@ class HistoryViewModel(
                 HistoryViewModel(
                     observeHistory = container.observeTripHistory,
                     initialMonth = YearMonth.now(container.clock.withZone(container.zone)),
+                    hideTrip = container.hideTrip,
                 )
             }
         }

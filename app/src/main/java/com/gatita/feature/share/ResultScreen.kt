@@ -8,7 +8,12 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.sp
+import com.gatita.core.ui.component.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -55,45 +60,43 @@ fun ResultContent(state: ResultUiState, onBack: () -> Unit, onHome: () -> Unit, 
 @Composable
 private fun PaymentsResult(content: ResultContentState.Payments) {
     val view = content.view
-    InfoCard {
-        Text("확정된 결제액 정산", style = MaterialTheme.typography.titleMedium)
-        Text(view.tripName, style = MaterialTheme.typography.titleLarge)
-        Text(view.tripDate, style = MaterialTheme.typography.bodyMedium)
-        Text(view.total, style = MaterialTheme.typography.displaySmall)
-        Text("정산에 포함한 실제 결제 금액의 합계 · ${view.peopleLine}", style = MaterialTheme.typography.bodyMedium)
-        Text("주유 ${view.fuelTotal} · 기타 ${view.otherTotal}", style = MaterialTheme.typography.bodyMedium)
-        Text(
-            "확정된 정산은 수정할 수 없습니다. 계산 결과일 뿐 송금이나 입금 확인이 아닙니다.",
-            style = MaterialTheme.typography.bodySmall,
-        )
+    val clipboard=LocalClipboardManager.current
+    var copied by remember{mutableStateOf(false)}
+    var showSummary by rememberSaveable{mutableStateOf(false)}
+    Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+        Action("정산 요약 복사"){clipboard.setText(AnnotatedString(content.summaryText));copied=true}
+        Action(if(showSummary)"요약 접기" else "요약 · QR 보기",primary=false){showSummary=!showSummary}
     }
-
-    SectionTitle("분담액")
-    view.shares.forEach { share ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(share.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text(share.amount, style = MaterialTheme.typography.titleMedium)
+    if(copied)NoticeMessage("정산 요약을 복사했어요.")
+    Panel(Modifier.fillMaxWidth()) {
+        Note("확정된 결제액 정산 · ${view.tripDate}")
+        Text(view.tripName,fontSize=28.sp)
+        Text(view.total,fontSize=42.sp,color=MaterialTheme.colorScheme.primary)
+        Note(view.peopleLine)
+        Note("주유 ${view.fuelTotal} · 기타 ${view.otherTotal}")
+        Note("확정 당시 금액을 보관했어요. 실제 송금과 입금 확인은 별도로 진행해 주세요.")
+    }
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
+        Panel(Modifier.weight(1f)) {
+            SectionTitle("각자 나눌 금액")
+            view.shares.forEach {share->
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                    Text(share.label,Modifier.weight(1f));Text(share.amount)
+                }
+            }
+            Note("기록 거리 ${view.distance} · ${view.source}")
+        }
+        Panel(Modifier.weight(1f)) {
+            SectionTitle("확정 당시 비용")
+            view.costs.forEachIndexed {index,cost->
+                if(index>0) androidx.compose.material3.HorizontalDivider()
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(cost.title,Modifier.weight(1f));Text(cost.amount)}
+                cost.details.forEach{Note(it)}
+                Note(if(cost.included)"정산 포함" else "정산 제외")
+            }
         }
     }
-
-    SectionTitle("결제 내역 (확정 당시)")
-    view.costs.forEach { cost ->
-        InfoCard {
-            Text(cost.title, style = MaterialTheme.typography.titleSmall)
-            Text(cost.amount, style = MaterialTheme.typography.titleMedium)
-            cost.details.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            Text(if (cost.included) "정산에 포함" else "정산에서 제외", style = MaterialTheme.typography.labelLarge)
-        }
-    }
-
-    SectionTitle("기록 정보 (참고용)")
-    InfoCard {
-        LabeledValue("주행거리", view.distance)
-        Text(view.quality, style = MaterialTheme.typography.bodyMedium)
-        SourceLabel(view.source)
-        Text("계산 방식 ${view.calculationVersion} · 정산 금액에는 영향을 주지 않는 기록입니다.", style = MaterialTheme.typography.bodySmall)
-    }
-
+    if(showSummary) {
     SectionTitle("공유용 QR")
     InfoCard {
         Text(
@@ -119,4 +122,5 @@ private fun PaymentsResult(content: ResultContentState.Payments) {
     SelectionContainer {
         Text(content.summaryText, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth())
     }
+}
 }

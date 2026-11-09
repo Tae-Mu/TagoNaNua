@@ -1,6 +1,10 @@
 package com.gatita.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -47,7 +51,21 @@ private val costArgs = listOf(
 @Composable
 fun AppNavHost(container: AppContainer) {
     val nav = rememberNavController()
+    val settingsViewModel: com.gatita.feature.settings.SettingsViewModel = viewModel(factory=com.gatita.feature.settings.SettingsViewModel.factory(container))
+    val settingsState by settingsViewModel.state.collectAsState()
+    val appearance = settingsState.saved.appearance
+    val entry by nav.currentBackStackEntryAsState()
+    val route=entry?.destination?.route
+    val selected=when(route){Routes.HISTORY->Routes.HISTORY;"settings"->"settings";"settlements",Routes.SETTLEMENT,Routes.RESULT->"settlements";else->Routes.HOME}
+    com.gatita.core.ui.theme.TagoTheme(if(appearance=="시스템")isSystemInDarkTheme() else appearance=="야간") {
+    ConnectedShell(selected,{ target -> nav.navigate(target){popUpTo(Routes.HOME);launchSingleTop=true} }) {
     NavHost(navController = nav, startDestination = Routes.HOME) {
+        composable("settings") { com.gatita.feature.settings.SettingsRoute(settingsViewModel) }
+        composable("settlements") {
+            com.gatita.feature.home.SettlementListRoute(
+                viewModel=viewModel(factory=HomeViewModel.factory(container)),
+                onOpen={nav.navigate(Routes.settlement(it))},onHistory={nav.navigate(Routes.HISTORY)})
+        }
         composable(Routes.HOME) {
             HomeRoute(
                 viewModel = viewModel(factory = HomeViewModel.factory(container)),
@@ -115,4 +133,6 @@ fun AppNavHost(container: AppContainer) {
             )
         }
     }
+}
+}
 }

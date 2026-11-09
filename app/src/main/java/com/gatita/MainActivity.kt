@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.gatita.core.ui.theme.GatitaTheme
 import com.gatita.navigation.AppNavHost
 
 class MainActivity : ComponentActivity() {
@@ -13,9 +12,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = (application as GatitaApplication).container
         setContent {
-            GatitaTheme {
-                AppNavHost(container)
-            }
+            AppNavHost(container)
         }
     }
 }

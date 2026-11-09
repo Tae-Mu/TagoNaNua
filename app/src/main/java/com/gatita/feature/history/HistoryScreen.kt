@@ -9,7 +9,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.gatita.core.ui.component.*
+import com.gatita.feature.publishing.MonthPicker
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -43,6 +48,8 @@ fun HistoryRoute(
         onPreviousMonth = viewModel::previousMonth,
         onNextMonth = viewModel::nextMonth,
         onFilterChange = viewModel::setFilter,
+        onMonthChange = viewModel::setMonth,
+        onDelete = viewModel::requestDelete,
         onOpen = { row ->
             when (row.status) {
                 TripStatus.IN_PROGRESS -> onOpenTrip(row.tripId)
@@ -51,6 +58,13 @@ fun HistoryRoute(
             }
         },
     )
+    state.deleteTarget?.let { target -> androidx.compose.material3.AlertDialog(
+        onDismissRequest=viewModel::dismissDelete,
+        title={Text("목록에서 삭제할까요?")},
+        text={Column {Text("‘${target.title}’을 여행 내역과 정산 목록에서 제외해요. 확정된 정산 원본은 이 기기에 보관돼요.");state.deleteError?.let { ErrorMessage(it) }}},
+        confirmButton={androidx.compose.material3.TextButton(viewModel::confirmDelete,enabled=!state.deleting){Text(if(state.deleting)"처리 중…" else "목록에서 삭제")}},
+        dismissButton={androidx.compose.material3.TextButton(viewModel::dismissDelete,enabled=!state.deleting){Text("취소")}}
+    ) }
 }
 
 @Composable
@@ -62,9 +76,16 @@ fun HistoryContent(
     onNextMonth: () -> Unit,
     onFilterChange: (HistoryFilter) -> Unit,
     onOpen: (HistoryRow) -> Unit,
+    onMonthChange: ((YearMonth)->Unit)? = null,
+    onDelete: ((HistoryRow)->Unit)? = null,
 ) {
-    GatitaScaffold(title = "지난 여행·정산", onBack = onBack) {
-        MonthBar(state.month, onPreviousMonth, onNextMonth)
+    var monthPicker by rememberSaveable{mutableStateOf(false)}
+    if(monthPicker)MonthPicker("${state.month.year}년 ${state.month.monthValue}월",{value->
+        onMonthChange?.invoke(YearMonth.of(value.substringBefore("년").toInt(),value.substringAfter("년 ").substringBefore("월").toInt()));monthPicker=false
+    },{monthPicker=false})
+    GatitaScaffold(title = "여행 내역", onBack = onBack) {
+        if(onMonthChange!=null)Action("${state.month.year}년 ${state.month.monthValue}월  ⌄",primary=false){monthPicker=true}
+        else MonthBar(state.month, onPreviousMonth, onNextMonth)
         ChoiceChips(
             options = HistoryFilter.entries.toList(),
             selected = state.filter,
@@ -98,7 +119,7 @@ fun HistoryContent(
                         val rows = state.rows.filter { it.section == section }
                         if (rows.isNotEmpty()) {
                             SectionTitle(section.title)
-                            rows.forEach { HistoryCard(it, onOpen) }
+                            rows.forEach { HistoryCard(it, onOpen, onDelete) }
                         }
                     }
                 }
@@ -121,23 +142,14 @@ private fun MonthBar(month: YearMonth, onPrevious: () -> Unit, onNext: () -> Uni
 }
 
 @Composable
-private fun HistoryCard(row: HistoryRow, onOpen: (HistoryRow) -> Unit) {
-    InfoCard(
-        container = if (row.section == HistorySection.LEGACY) {
-            MaterialTheme.colorScheme.tertiaryContainer
-        } else {
-            MaterialTheme.colorScheme.secondaryContainer
-        },
-        modifier = Modifier
-            .heightIn(min = 72.dp)
-            .clickable(role = Role.Button, onClickLabel = "${row.title} 열기") { onOpen(row) },
-    ) {
-        Text("${row.title} · ${row.statusLabel}", style = MaterialTheme.typography.titleMedium)
-        Text(row.date, style = MaterialTheme.typography.bodyMedium)
-        row.amountCaption?.let { Text(it, style = MaterialTheme.typography.labelLarge) }
-        row.amount?.let { Text(it, style = MaterialTheme.typography.titleLarge) }
-        row.costSummary?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-        row.distance?.let { Text("주행거리 $it", style = MaterialTheme.typography.bodyMedium) }
-        SourceLabel(row.source)
+private fun HistoryCard(row: HistoryRow, onOpen: (HistoryRow) -> Unit, onDelete: ((HistoryRow)->Unit)?) {
+    Panel(Modifier.fillMaxWidth().clickable(role=Role.Button,onClickLabel="${row.title} 열기"){onOpen(row)}) {
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(22.dp)) {
+            Column {Text(row.date.takeLast(2),fontSize=28.sp);Note(row.date.take(7))}
+            Column(Modifier.weight(1f)){Text(row.title,fontSize=20.sp);Note(listOfNotNull(row.distance,row.costSummary).joinToString(" · "));Note(row.statusLabel)}
+            Column(horizontalAlignment=Alignment.End){row.amount?.let{Text(it,fontSize=24.sp)};row.amountCaption?.let{Note(it)}}
+            Text("›")
+            if(onDelete!=null && row.status!=TripStatus.IN_PROGRESS) androidx.compose.material3.TextButton({onDelete(row)}) {Text("목록 삭제")}
+        }
     }
 }

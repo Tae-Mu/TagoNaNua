@@ -44,7 +44,10 @@ data class HomeUiState(
     /** 마쳤지만 정산을 확정하지 않은 여행. 포함 비용 합계는 아직 확정 전 금액이다. */
     val pendingTrips: List<TripSummary> = emptyList(),
     val pendingTotalWon: Long = 0,
+    val settledTrips: List<TripSummary> = emptyList(),
     val nameInput: String = "",
+    val people: Int = 4,
+    val includeDriver: Boolean = true,
     val nameError: String? = null,
     val startOdometerInput: String = "",
     val startOdometerError: String? = null,
@@ -61,6 +64,7 @@ class HomeViewModel(
     private val observeSettlementList: ObserveSettlementListUseCase,
     private val startTripUseCase: StartTripUseCase,
     private val clock: Clock,
+    private val settings: com.gatita.domain.repository.SettingsRepository? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
@@ -73,6 +77,12 @@ class HomeViewModel(
 
     init {
         observe()
+        settings?.let { repository -> viewModelScope.launch {
+            repository.observe().catch { }.collect { value ->
+                if (_state.value.nameInput.isEmpty() && _state.value.startOdometerInput.isEmpty())
+                    _state.update { it.copy(includeDriver=if(it.people==1) true else value.includeDriver) }
+            }
+        } }
     }
 
     /** 앱 시작 시 Room에서 기록 중인 여행을 복구하고 이후 변경을 따라간다. 실패하면 재시도할 수 있다. */
@@ -89,6 +99,7 @@ class HomeViewModel(
                             loadError = null,
                             activeTrip = active,
                             pendingTrips = list.pending,
+                            settledTrips = list.settled,
                             pendingTotalWon = list.pendingTotalWon,
                         )
                     }
@@ -103,6 +114,11 @@ class HomeViewModel(
     fun onStartOdometerChange(text: String) {
         _state.update { it.copy(startOdometerInput = text, startOdometerError = null, startError = null) }
     }
+
+    fun onPeopleChange(value:Int) {
+        if(value in 1..8) _state.update { it.copy(people=value,includeDriver=if(value==1) true else it.includeDriver) }
+    }
+    fun onIncludeDriverChange(value:Boolean) = _state.update { it.copy(includeDriver=if(it.people==1) true else value) }
 
     fun startTrip() {
         if (!startGuard.tryAcquire()) return
@@ -131,6 +147,8 @@ class HomeViewModel(
                     startedAtMillis = clock.millis(),
                     source = VehicleSource.MANUAL,
                     name = current.nameInput,
+                    people = current.people,
+                    includeDriver = current.includeDriver,
                 )
                 when (val result = startTripUseCase(command)) {
                     is DomainResult.Success -> {
@@ -172,6 +190,7 @@ class HomeViewModel(
                     observeSettlementList = container.observeSettlementList,
                     startTripUseCase = container.startTrip,
                     clock = container.clock,
+                    settings = container.settingsRepository,
                 )
             }
         }

@@ -2,6 +2,8 @@
 
 package com.gatita.core.ui.component
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -50,30 +52,24 @@ import androidx.compose.ui.unit.dp
 fun GatitaScaffold(
     title: String,
     onBack: (() -> Unit)? = null,
+    maxWidthDp: Int = 1400,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    if (onBack != null) {
-                        TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("뒤로") }
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            content = content,
-        )
+    Box(Modifier.fillMaxSize(),contentAlignment=Alignment.TopCenter) {
+    Column(Modifier.widthIn(max=maxWidthDp.dp).fillMaxSize().imePadding().verticalScroll(rememberScrollState())
+        .padding(horizontal=32.dp, vertical=24.dp), verticalArrangement=Arrangement.spacedBy(18.dp)) {
+        if(onBack!=null) TextButton(onClick=onBack) { Text("‹ 돌아가기") }
+        Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically) {
+            Text(title, modifier=Modifier.weight(1f), style=MaterialTheme.typography.headlineMedium,
+                fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+            androidx.compose.material3.Surface(color=MaterialTheme.colorScheme.secondaryContainer,
+                shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+                Text("수동 기록", Modifier.padding(horizontal=14.dp,vertical=10.dp), color=MaterialTheme.colorScheme.primary)
+            }
+        }
+        content()
+        Spacer(Modifier.height(16.dp))
+    }
     }
 }
 
@@ -89,16 +85,18 @@ fun SectionTitle(text: String) {
 @Composable
 fun InfoCard(
     modifier: Modifier = Modifier,
-    container: Color = MaterialTheme.colorScheme.secondaryContainer,
+    container: Color = MaterialTheme.colorScheme.surface,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = container),
+        shape=androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+        border=androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(22.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content,
         )
     }
@@ -187,6 +185,7 @@ fun NumberField(
     errorText: String? = null,
     supporting: String? = null,
     enabled: Boolean = true,
+    keyboardType: KeyboardType = KeyboardType.Decimal,
     imeAction: ImeAction = ImeAction.Next,
 ) {
     OutlinedTextField(
@@ -200,7 +199,8 @@ fun NumberField(
         },
         enabled = enabled,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = imeAction),
+        shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         modifier = modifier
             .fillMaxWidth()
             .semantics { if (errorText != null) error(errorText) },
@@ -218,6 +218,7 @@ fun ActionButton(
     enabled: Boolean = true,
 ) {
     Button(
+        shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         onClick = onClick,
         enabled = enabled && !busy,
         modifier = modifier

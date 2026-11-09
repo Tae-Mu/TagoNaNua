@@ -48,6 +48,7 @@ fun TextInput(
         },
         enabled = enabled,
         singleLine = true,
+        shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         modifier = modifier
             .fillMaxWidth()

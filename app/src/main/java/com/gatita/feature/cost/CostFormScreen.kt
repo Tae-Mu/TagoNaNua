@@ -1,145 +1,88 @@
 package com.gatita.feature.cost
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.gatita.core.ui.component.ActionButton
-import com.gatita.core.ui.component.ChoiceChips
-import com.gatita.core.ui.component.EmptyBlock
-import com.gatita.core.ui.component.ErrorBlock
-import com.gatita.core.ui.component.ErrorMessage
-import com.gatita.core.ui.component.GatitaScaffold
-import com.gatita.core.ui.component.InfoCard
-import com.gatita.core.ui.component.LoadingBlock
-import com.gatita.core.ui.component.NumberField
-import com.gatita.core.ui.component.TextInput
+import com.gatita.core.ui.component.*
 import com.gatita.domain.model.CostKind
 import com.gatita.feature.common.Formatters
+import com.gatita.feature.publishing.CostIcon
+import com.gatita.feature.publishing.DayPicker
+import com.gatita.feature.trip.iconKind
+import java.time.LocalDate
 
 @Composable
-fun CostFormRoute(viewModel: CostFormViewModel, onBack: () -> Unit, onSaved: () -> Unit) {
+fun CostFormRoute(viewModel:CostFormViewModel,onBack:()->Unit,onSaved:()->Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(viewModel) {
-        viewModel.events.collect { event ->
-            when (event) {
-                CostFormEvent.Saved -> onSaved()
-            }
-        }
-    }
-    CostFormContent(
-        state = state,
-        onBack = onBack,
-        onRetryLoad = viewModel::load,
-        onKindChange = viewModel::onKindChange,
-        onAmountChange = viewModel::onAmountChange,
-        onDescriptionChange = viewModel::onDescriptionChange,
-        onUnitPriceChange = viewModel::onUnitPriceChange,
-        onPaidOnChange = viewModel::onPaidOnChange,
-        onSave = viewModel::save,
-    )
+    LaunchedEffect(viewModel){viewModel.events.collect{if(it==CostFormEvent.Saved)onSaved()}}
+    CostFormContent(state,onBack,viewModel::load,viewModel::onKindChange,viewModel::onAmountChange,
+        viewModel::onDescriptionChange,viewModel::onUnitPriceChange,viewModel::onPaidOnChange,viewModel::save)
 }
-
 @Composable
-fun CostFormContent(
-    state: CostFormUiState,
-    onBack: () -> Unit,
-    onRetryLoad: () -> Unit,
-    onKindChange: (CostKind) -> Unit,
-    onAmountChange: (String) -> Unit,
-    onDescriptionChange: (String) -> Unit,
-    onUnitPriceChange: (String) -> Unit,
-    onPaidOnChange: (String) -> Unit,
-    onSave: () -> Unit,
-) {
-    GatitaScaffold(title = if (state.isEdit) "비용 수정" else "비용 추가", onBack = onBack) {
+fun CostFormContent(state:CostFormUiState,onBack:()->Unit,onRetryLoad:()->Unit,onKindChange:(CostKind)->Unit,
+    onAmountChange:(String)->Unit,onDescriptionChange:(String)->Unit,onUnitPriceChange:(String)->Unit,
+    onPaidOnChange:(String)->Unit,onSave:()->Unit) {
+    var selected by rememberSaveable{mutableStateOf(state.isEdit)}
+    var details by rememberSaveable{mutableStateOf(state.isEdit)}
+    var calendar by rememberSaveable{mutableStateOf(false)}
+    val fuel=state.kind==CostKind.FUEL
+    GatitaScaffold(if(!selected)"비용 추가" else "${Formatters.costKind(state.kind)} ${if(state.isEdit)"수정" else "추가"}",
+        if(selected&&!state.isEdit)({selected=false}) else onBack, maxWidthDp=960) {
         when {
-            state.isLoading -> LoadingBlock("비용을 불러오는 중")
-            state.loadError != null -> ErrorBlock(state.loadError, onRetryLoad)
-            state.notFound -> EmptyBlock("비용을 찾을 수 없습니다", "삭제되었거나 다른 여행의 비용입니다. 뒤로 가서 목록을 확인하세요.")
-            else -> {
-                val locked = state.isSaving
-                InfoCard {
-                    Text(
-                        "실제로 결제한 금액을 직접 입력합니다. 카드·하이패스 내역을 자동으로 가져오지 않으며, 이 앱은 결제나 송금을 하지 않습니다.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+            state.isLoading->LoadingBlock("비용을 불러오는 중")
+            state.loadError!=null->ErrorBlock(state.loadError,onRetryLoad)
+            !state.editable->EmptyState("확정된 여행이에요","정산이 확정된 여행의 비용은 변경할 수 없어요.")
+            state.notFound->EmptyState("비용을 찾을 수 없어요","목록으로 돌아가 다시 확인해 주세요.")
+            else->Panel(Modifier.fillMaxWidth().animateContentSize()) {
+                Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+                    Text(state.tripName.ifBlank{"이번 여행"},Modifier.fillMaxWidth().padding(16.dp),color=MaterialTheme.colorScheme.primary)
                 }
-
-                Text("종류", style = MaterialTheme.typography.labelLarge)
-                ChoiceChips(
-                    options = CostKind.entries.toList(),
-                    selected = state.kind,
-                    label = { Formatters.costKind(it) },
-                    onSelect = onKindChange,
-                    enabled = !locked,
-                )
-
-                NumberField(
-                    label = "결제 금액 (원)",
-                    value = state.amountInput,
-                    onValueChange = onAmountChange,
-                    errorText = state.amountError,
-                    supporting = "1원 이상 10,000,000원 이하의 정수",
-                    enabled = !locked,
-                    imeAction = ImeAction.Next,
-                )
-
-                if (state.kind == CostKind.FUEL) {
-                    TextInput(
-                        label = "주유소 (선택)",
-                        value = state.descriptionInput,
-                        onValueChange = onDescriptionChange,
-                        errorText = state.descriptionError,
-                        supporting = "50자까지",
-                        enabled = !locked,
-                    )
-                    NumberField(
-                        label = "리터당 가격 (원/L)",
-                        value = state.unitPriceInput,
-                        onValueChange = onUnitPriceChange,
-                        errorText = state.unitPriceError,
-                        supporting = "주유량 표시에만 쓰입니다. 정산 금액은 위 결제 금액 그대로입니다. 소수 둘째 자리까지.",
-                        enabled = !locked,
-                    )
-                    TextInput(
-                        label = "주유일 (선택)",
-                        value = state.paidOnInput,
-                        onValueChange = onPaidOnChange,
-                        errorText = state.paidOnError,
-                        supporting = "2026-11-09 형식. 비우면 저장하는 날짜가 들어갑니다.",
-                        enabled = !locked,
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done,
-                    )
+                if(!selected) {
+                    Text("어떤 비용을 기록할까요?",fontSize=24.sp)
+                    Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                        CostKind.entries.forEach{kind->Panel(Modifier.weight(1f).clickable{onKindChange(kind);selected=true}){
+                            CostIcon(iconKind(kind));Text(Formatters.costKind(kind));Note("직접 입력  ›")
+                        }}
+                    }
                 } else {
-                    TextInput(
-                        label = when (state.kind) {
-                            CostKind.PARKING -> "주차 장소 (선택)"
-                            CostKind.TOLL -> "톨게이트·구간 (선택)"
-                            else -> "내용 (선택)"
-                        },
-                        value = state.descriptionInput,
-                        onValueChange = onDescriptionChange,
-                        errorText = state.descriptionError,
-                        supporting = "100자까지. 비워도 저장할 수 있습니다.",
-                        enabled = !locked,
-                        imeAction = ImeAction.Done,
-                    )
+                    ChoiceChips(CostKind.entries.toList(),state.kind,{Formatters.costKind(it)},onKindChange,!state.isSaving)
+                    Row(horizontalArrangement=Arrangement.spacedBy(20.dp)) {
+                        NumberField("결제 금액 (원)",state.amountInput,onAmountChange,modifier=Modifier.weight(1f),
+                            errorText=state.amountError,enabled=!state.isSaving,keyboardType=KeyboardType.Number,
+                            supporting="영수증의 총 결제 금액을 입력해 주세요.")
+                        if(fuel)NumberField("1L당 가격 (원/L)",state.unitPriceInput,onUnitPriceChange,modifier=Modifier.weight(1f),
+                            errorText=state.unitPriceError,enabled=!state.isSaving,supporting="영수증에 표시된 리터당 가격이에요.")
+                    }
+                    if(fuel) {
+                        val liters=state.fuelLiters
+                        NoticeMessage("계산한 주유량   ${liters?.let{"약 $it L"}?:"금액과 단가를 입력해 주세요"}")
+                        TextButton({details=!details},enabled=!state.isSaving){Text("주유 상세 정보 · 선택  ${if(details)"⌃" else "⌄"}")}
+                    }
+                    if(!fuel||details) {
+                        TextInput(when(state.kind){CostKind.FUEL->"주유소 · 선택";CostKind.PARKING->"주차 장소 · 선택";CostKind.TOLL->"톨게이트 / 이용 구간 · 선택";else->"비용 내용 · 선택"},
+                            state.descriptionInput,onDescriptionChange,errorText=state.descriptionError,enabled=!state.isSaving)
+                        if(fuel){
+                            Action("주유일  ${state.paidOnInput.ifBlank{LocalDate.now().toString()}}",primary=false,enabled=!state.isSaving){calendar=true}
+                            state.paidOnError?.let{ErrorMessage(it)}
+                        }
+                    }
+                    state.saveError?.let{ErrorMessage(it)}
+                    if(state.conflict) SecondaryButton("최신 내용 다시 불러오기",onRetryLoad)
+                    ActionButton(if(state.isEdit)"수정 완료" else "추가하기",onSave,busy=state.isSaving,
+                        enabled=state.amountInput.isNotBlank()&&(!fuel||state.unitPriceInput.isNotBlank()))
+                    Note("저장한 비용은 이 여행에 연결돼요. 정산 포함 여부는 비용 내역에서 바꿀 수 있어요.")
                 }
-
-                state.saveError?.let { ErrorMessage(it) }
-                ActionButton(
-                    text = if (state.isEdit) "수정 저장" else "비용 저장",
-                    onClick = onSave,
-                    busy = state.isSaving,
-                    busyText = "저장하는 중…",
-                )
             }
         }
     }
+    if(calendar)DayPicker(state.paidOnInput.ifBlank{LocalDate.now().toString()},{onPaidOnChange(it);calendar=false},{calendar=false})
 }

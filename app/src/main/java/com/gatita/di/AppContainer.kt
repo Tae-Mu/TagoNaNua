@@ -57,6 +57,9 @@ class AppContainer(
 ) {
     private val database: AppDatabase = AppDatabase.create(context)
 
+    val settingsRepository: com.gatita.domain.repository.SettingsRepository = com.gatita.data.repository.RoomSettingsRepository(database.settingsDao())
+    val saveSettings = com.gatita.domain.usecase.SaveSettingsUseCase(settingsRepository)
+
     private val roomTripRepository = RoomTripRepository(database)
     val tripRepository: TripRepository = roomTripRepository
     val costRepository: CostRepository = RoomCostRepository(database)
@@ -67,6 +70,9 @@ class AppContainer(
     val settlementRepository: SettlementRepository = RoomSettlementRepository(database)
     private val transactions: TransactionRunner = RoomTransactionRunner(database)
     private val calculator = SettlementCalculator()
+    val tripSessionRepository = com.gatita.data.repository.RoomTripSessionRepository(database.tripSessionDao())
+    val hideTrip = com.gatita.domain.usecase.HideTripUseCase(tripRepository,tripSessionRepository,transactions)
+    val setTripPaused = com.gatita.domain.usecase.SetTripPausedUseCase(tripRepository,tripSessionRepository,transactions,clock)
 
     val vehicleDataSource: VehicleDataSource = SampleVehicleDataSource(clock)
 
