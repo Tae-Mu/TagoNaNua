@@ -109,3 +109,9 @@ gradle/wrapper/                      # Gradle Wrapper
 `com.gatita`는 임시 패키지명이며 앱 식별자와 최종 패키지명은 추후 확정합니다.
 
 상세 기획·설계·테스트·보안 문서는 [옵시디언 보관함](.codex/docs/index.md)에서 관리합니다. Obsidian의 **폴더를 보관함으로 열기**에서 이 프로젝트의 `.codex/docs/`를 선택하세요. Codex는 [AGENTS.md](AGENTS.md)에 연결된 같은 문서를 읽습니다.
+
+## main 퍼블리싱 화면 병합
+
+HTML 기반 샘플 화면과 검수 문서를 함께 보관합니다. `navigation/PublishingApp.kt`의 Compose Preview에서 퍼블리싱 화면을 확인할 수 있습니다. 이 브랜치의 런처는 기존 `MainActivity → AppNavHost`와 Room 기반 실제 기능을 유지합니다. 퍼블리싱 화면을 실제 데이터에 연결하는 작업은 별도입니다. 퍼블리싱 APK 식별자·SDK 안내와 검수 기록은 main의 독립 시안 앱 기준이며 이 브랜치의 실행 설정과 구분합니다.
+
+[퍼블리싱 문서](.codex/docs/publishing.md) · [검수 반영 기록](.codex/docs/publishing-audit-backlog-2026-11-09.md)

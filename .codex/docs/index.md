@@ -7,6 +7,7 @@
 - [DB 설계](database.md)
 - [HTML 기준 API·함수·테이블 명세](html-api-spec.md) — 결제액 방식 명세(핵심 흐름 부분 구현, 일부 제안 미구현)
 - [테스트 전략](testing.md)
+- [퍼블리싱 전반 QA·개선 백로그 (2026-11-09)](publishing-audit-backlog-2026-11-09.md) — 20개 개선 항목과 우선순위
 - [보안 10대 규칙](security.md)
 - [결정 기록](decisions.md)
 
