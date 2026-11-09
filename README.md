@@ -4,7 +4,21 @@ Pleos 차량의 주행거리와 연비를 바탕으로 예상 유류비를 계�
 
 ## 현재 상태
 
-개발 전 폴더 구조와 설계 문서만 준비한 상태입니다. Kotlin 구현 코드, Android Manifest, Gradle 설정 및 Wrapper 실행 파일은 아직 추가하지 않았으므로 현재 빌드하거나 실행할 수 없습니다.
+최신 HTML 시안을 기반으로 Jetpack Compose 퍼블리싱 앱을 추가했습니다. 홈, 출발 준비/인트로, 여행 기록/복원/완료, 비용 종류/입력/내역, 정산 목록/상세, 여행 내역, 설정의 14개 화면을 샘플 데이터로 확인할 수 있습니다.
+
+**UI 검토용 앱입니다.** Room, 차량 SDK, 저장, 실제 정산 계산은 연결하지 않았습니다. 입력·선택·화면 전환만 제공하며 금액은 고정 샘플입니다. 출발 인트로는 입력한 여행 이름과 앱 로고를 표시하고 3.32초 후 전환을 시작합니다. 바로 기록 보기로 건너뛸 수 있습니다.
+
+### 빌드 및 미리보기
+
+JDK 17 이상과 Android SDK 36이 필요합니다. Android Studio에서 이 폴더를 열고 Gradle Sync 후 app을 실행하세요. 앱 식별자는 기존 앱과 구분하는 `com.gatita.publishing`입니다.
+
+```sh
+./gradlew :app:assembleDebug :app:lintDebug
+```
+
+SDK 경로는 ANDROID_HOME 또는 개인 local.properties로 지정합니다. local.properties는 커밋하지 않습니다. APK는 `app/build/outputs/apk/debug/app-debug.apk`에 생성됩니다. 하단 **퍼블리싱 · 화면 선택**에서 각 화면을 열고 기본/빈 상태/오류/로딩/주행 표시를 확인하세요. 600dp 이상은 사이드 메뉴, 좁은 폭은 하단 메뉴입니다.
+
+구현 범위와 검수 현황은 [.codex/docs/publishing.md](.codex/docs/publishing.md)를 참고하세요.
 
 ## 개발 구성
 
