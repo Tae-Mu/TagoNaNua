@@ -1,5 +1,9 @@
 package com.gatita.feature.share
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import com.gatita.core.ui.theme.Navy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,7 +41,7 @@ fun ResultRoute(viewModel: ResultViewModel, onBack: () -> Unit, onHome: () -> Un
 
 @Composable
 fun ResultContent(state: ResultUiState, onBack: () -> Unit, onHome: () -> Unit, onRetry: () -> Unit) {
-    GatitaScaffold(title = "정산 결과", onBack = onBack) {
+    GatitaScaffold(title = (state.content as? ResultContentState.Payments)?.view?.tripName ?: "정산 결과", onBack = onBack,subtitle="함께 탄 사람들에게 정산 요약을 전달해 주세요.") {
         val content = state.content
         when {
             state.isLoading -> LoadingBlock("정산 결과를 불러오는 중")
@@ -63,18 +67,26 @@ private fun PaymentsResult(content: ResultContentState.Payments) {
     val clipboard=LocalClipboardManager.current
     var copied by remember{mutableStateOf(false)}
     var showSummary by rememberSaveable{mutableStateOf(false)}
-    Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-        Action("정산 요약 복사"){clipboard.setText(AnnotatedString(content.summaryText));copied=true}
-        Action(if(showSummary)"요약 접기" else "요약 · QR 보기",primary=false){showSummary=!showSummary}
-    }
-    if(copied)NoticeMessage("정산 요약을 복사했어요.")
-    Panel(Modifier.fillMaxWidth()) {
-        Note("확정된 결제액 정산 · ${view.tripDate}")
-        Text(view.tripName,fontSize=28.sp)
-        Text(view.total,fontSize=42.sp,color=MaterialTheme.colorScheme.primary)
-        Note(view.peopleLine)
-        Note("주유 ${view.fuelTotal} · 기타 ${view.otherTotal}")
-        Note("확정 당시 금액을 보관했어요. 실제 송금과 입금 확인은 별도로 진행해 주세요.")
+    androidx.compose.material3.Surface(shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp),border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
+      Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Column(Modifier.weight(1f).fillMaxHeight().background(Navy).padding(32.dp),verticalArrangement=Arrangement.spacedBy(24.dp)) {
+            Text("CONFIRMED TOTAL",fontSize=11.sp,letterSpacing=2.sp,color=Color(0xFFC5D9E8))
+            Text("함께 나눌 총금액",fontSize=20.sp,color=Color.White)
+            AmountLabel(view.total.removeSuffix("원"),"원",64,Color.White)
+            Text("주유비 ${view.fuelTotal} · 기타 비용 ${view.otherTotal}",fontSize=13.sp,color=Color(0xFFC5D9E8))
+            androidx.compose.material3.HorizontalDivider(color=Color.White.copy(alpha=.15f))
+            Text("정산에 포함한 비용  ${view.costs.count{it.included}}건",fontSize=13.sp,color=Color(0xFFC5D9E8))
+        }
+        Column(Modifier.weight(1f).padding(32.dp),verticalArrangement=Arrangement.spacedBy(24.dp)) {
+            Text("SPLIT TOGETHER",fontSize=11.sp,letterSpacing=2.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${view.splitPeople}명이 함께 나누면",fontSize=20.sp)
+            AmountLabel(view.perPerson.removeSuffix("원"),"원 / 인",42,MaterialTheme.colorScheme.primary)
+            Note(if(view.includeDriver)"운전자를 포함한 균등 분담" else "운전자를 제외한 균등 분담")
+            androidx.compose.material3.HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+            Text("함께 탄 인원  ${view.peopleLine}")
+            Note("확정한 분담 기준이에요.")
+        }
+      }
     }
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
         Panel(Modifier.weight(1f)) {
@@ -96,6 +108,12 @@ private fun PaymentsResult(content: ResultContentState.Payments) {
             }
         }
     }
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
+        Action(if(showSummary)"요약 접기" else "요약 · QR 보기",primary=false){showSummary=!showSummary}
+        Spacer(Modifier.width(12.dp))
+        Action("정산 요약 복사"){clipboard.setText(AnnotatedString(content.summaryText));copied=true}
+    }
+    if(copied)NoticeMessage("정산 요약을 복사했어요.")
     if(showSummary) {
     SectionTitle("공유용 QR")
     InfoCard {

@@ -6,43 +6,47 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import com.gatita.core.ui.component.*
 
 @Composable fun SettingsRoute(viewModel: SettingsViewModel) {
     val state by viewModel.state.collectAsState()
     var confirmReset by remember { mutableStateOf(false) }
-    GatitaScaffold("설정") {
+    GatitaScaffold("설정",subtitle="다음 여행도 나에게 맞게 준비해요.") {
         if(state.loading) CircularProgressIndicator() else if(state.loadFailed) ErrorBlock(state.message.orEmpty(),viewModel::load) else {
             Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp)) {
-                Row(Modifier.fillMaxWidth().padding(24.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(18.dp)) {
-                    Brand(false)
-                    Column { Text(state.draft.driverName.ifBlank { "타고와 함께하는 운전자" },style=MaterialTheme.typography.titleLarge);Note("편한 여행을 위한 나의 기본 설정") }
+                Row(Modifier.fillMaxWidth().padding(28.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(18.dp)) {
+                    Surface(color=MaterialTheme.colorScheme.surface,shape=androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) {
+                        Text(state.draft.driverName.take(1).ifBlank{"나"},Modifier.padding(18.dp),color=MaterialTheme.colorScheme.primary)
+                    }
+                    Column { Text(state.draft.driverName.ifBlank { "타고와 함께하는 운전자" },style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface);Note("편한 여행을 위한 나의 기본 설정") }
                 }
             }
             Row(Modifier.height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
-                Panel(Modifier.weight(1f).fillMaxHeight()) {
-                    Note("PROFILE")
-                    Text("내 정보",style=MaterialTheme.typography.titleLarge)
+                Panel(Modifier.weight(1f).fillMaxHeight(),padding=28,gap=20) {
+                    Text("PROFILE",fontSize=11.sp,letterSpacing=2.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("내 정보",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
                     TextInput("정산에 표시할 이름",state.draft.driverName,{viewModel.edit(state.draft.copy(driverName=it))},enabled=!state.saving)
                     Note("비워두면 ‘나 (운전자)’로 표시해요. 확정된 정산의 이름은 바뀌지 않아요.")
                 }
-                Panel(Modifier.weight(1f).fillMaxHeight()) {
-                    Note("SETTLEMENT")
-                    Text("정산 기본값",style=MaterialTheme.typography.titleLarge)
+                Panel(Modifier.weight(1f).fillMaxHeight(),padding=28,gap=20) {
+                    Text("SETTLEMENT",fontSize=11.sp,letterSpacing=2.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("정산 기본값",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
                     SwitchRow("나 (운전자) 포함",state.draft.includeDriver,{viewModel.edit(state.draft.copy(includeDriver=it))},enabled=!state.saving)
                     Note("새 여행에 적용돼요. 혼자 타는 여행은 본인이 부담해요.")
                 }
             }
             Row(Modifier.height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
-                Panel(Modifier.weight(1f).fillMaxHeight()) {
-                    Note("APPEARANCE")
-                    Text("화면 모드",style=MaterialTheme.typography.titleLarge)
+                Panel(Modifier.weight(1f).fillMaxHeight(),padding=28,gap=20) {
+                    Text("APPEARANCE",fontSize=11.sp,letterSpacing=2.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("화면 모드",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
                     ChoiceChips(listOf("시스템","주간","야간"),state.draft.appearance,{it},{viewModel.edit(state.draft.copy(appearance=it))},enabled=!state.saving)
                     Note("저장한 설정은 앱을 다시 열어도 유지돼요.")
                 }
-                Panel(Modifier.weight(1f).fillMaxHeight()) {
-                    Note("VEHICLE")
-                    Text("연결 차량",style=MaterialTheme.typography.titleLarge)
+                Panel(Modifier.weight(1f).fillMaxHeight(),padding=28,gap=20) {
+                    Text("VEHICLE",fontSize=11.sp,letterSpacing=2.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("연결 차량",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
                     Text("차량 연결 전")
                     Note("이동 거리는 차량에서 받고, 비용은 직접 입력해요.")
                 }
@@ -50,7 +54,7 @@ import com.gatita.core.ui.component.*
             state.message?.let { Text(it,color=MaterialTheme.colorScheme.primary) }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) { Action(if(state.saving) "저장 중…" else "설정 저장",enabled=!state.saving){viewModel.save()} }
             Panel(Modifier.fillMaxWidth()) {
-                Text("기록과 연결",style=MaterialTheme.typography.titleLarge)
+                Text("기록과 연결",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
                 Note("여행과 비용은 이 기기에 저장돼요. 앱 삭제 시 기록도 삭제돼요.")
                 Note("차량 연결: 미연결 · 이동 거리는 차량에서 받고, 비용은 직접 입력해요.")
                 Note("QR은 정산 요약 공유용이에요. 실제 송금과 입금 확인은 별도로 진행해 주세요.")

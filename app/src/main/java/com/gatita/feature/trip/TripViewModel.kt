@@ -468,11 +468,11 @@ class TripViewModel(
         private const val KEY_SEGMENT_AT = "segmentAtMillis"
         private const val KEY_COMPLETE_AT = "completeAtMillis"
 
-        fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(container: AppContainer, activeTripId: Long? = null): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val handle = createSavedStateHandle()
                 TripViewModel(
-                    tripId = checkNotNull(handle.get<Long>(ARG_TRIP_ID)),
+                    tripId = activeTripId ?: checkNotNull(handle.get<Long>(ARG_TRIP_ID)),
                     trips = container.tripRepository,
                     ledgerRepository = container.tripLedgerRepository,
                     observeCostLedger = container.observeCostLedger,

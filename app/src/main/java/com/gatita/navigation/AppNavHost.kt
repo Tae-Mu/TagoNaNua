@@ -1,5 +1,9 @@
 package com.gatita.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -56,26 +60,54 @@ fun AppNavHost(container: AppContainer) {
     val appearance = settingsState.saved.appearance
     val entry by nav.currentBackStackEntryAsState()
     val route=entry?.destination?.route
+    val shellHome:HomeViewModel=viewModel(key="navigation-home",factory=HomeViewModel.factory(container))
+    val shellHomeState by shellHome.state.collectAsState()
+    val journey=shellHomeState.activeTrip?.let { trip ->
+        com.gatita.core.ui.component.ActiveJourney(trip.name){nav.navigate(Routes.trip(trip.id)){launchSingleTop=true}}
+    }
     val selected=when(route){Routes.HISTORY->Routes.HISTORY;"settings"->"settings";"settlements",Routes.SETTLEMENT,Routes.RESULT->"settlements";else->Routes.HOME}
     com.gatita.core.ui.theme.TagoTheme(if(appearance=="시스템")isSystemInDarkTheme() else appearance=="야간") {
-    ConnectedShell(selected,{ target -> nav.navigate(target){popUpTo(Routes.HOME);launchSingleTop=true} }) {
-    NavHost(navController = nav, startDestination = Routes.HOME) {
-        composable("settings") { com.gatita.feature.settings.SettingsRoute(settingsViewModel) }
-        composable("settlements") {
+    ConnectedShell(selected,{ target ->
+        // Re-selecting the current destination must not destroy/recreate its screen.
+        if (route != target) nav.navigate(target) {
+            val resetFinishedHome = target == Routes.HOME && shellHomeState.activeTrip == null
+            popUpTo(Routes.HOME) { inclusive = resetFinishedHome; saveState = !resetFinishedHome }
+            launchSingleTop = true
+            restoreState = !resetFinishedHome
+        }
+    }) {
+    NavHost(navController = nav, startDestination = Routes.HOME,
+        enterTransition={ fadeIn(tween(180, easing=FastOutSlowInEasing)) },
+        exitTransition={ fadeOut(tween(180, easing=FastOutSlowInEasing)) },
+        popEnterTransition={ fadeIn(tween(180, easing=FastOutSlowInEasing)) },
+        popExitTransition={ fadeOut(tween(180, easing=FastOutSlowInEasing)) }) {
+        journeyDestination("settings", journey) { com.gatita.feature.settings.SettingsRoute(settingsViewModel) }
+        journeyDestination("settlements", journey) {
             com.gatita.feature.home.SettlementListRoute(
-                viewModel=viewModel(factory=HomeViewModel.factory(container)),
+                viewModel=shellHome,
                 onOpen={nav.navigate(Routes.settlement(it))},onHistory={nav.navigate(Routes.HISTORY)})
         }
-        composable(Routes.HOME) {
+        journeyDestination(Routes.HOME, journey) {
             HomeRoute(
-                viewModel = viewModel(factory = HomeViewModel.factory(container)),
+                viewModel = shellHome,
                 onOpenTrip = { nav.navigate(Routes.trip(it)) },
                 onOpenSettlement = { nav.navigate(Routes.settlement(it)) },
                 onOpenHistory = { nav.navigate(Routes.HISTORY) },
                 onOpenSettlements = { nav.navigate("settlements") },
+                activeContent = { activeId ->
+                    TripRoute(
+                        viewModel=viewModel(key="active-trip-$activeId",factory=TripViewModel.factory(container,activeId)),
+                        onBack={nav.navigate(Routes.HISTORY)},
+                        onAddCost={nav.navigate(Routes.cost(it))},
+                        onEditCost={tripId,costId->nav.navigate(Routes.cost(tripId,costId))},
+                        onOpenSettlement={nav.navigate(Routes.settlement(it))},
+                        onOpenResult={nav.navigate(Routes.result(it))},
+                        onDiscarded={nav.navigate(Routes.HOME){popUpTo(Routes.HOME){inclusive=true};launchSingleTop=true}},
+                    )
+                },
             )
         }
-        composable(Routes.HISTORY) {
+        journeyDestination(Routes.HISTORY, journey) {
             HistoryRoute(
                 viewModel = viewModel(factory = HistoryViewModel.factory(container)),
                 onBack = { nav.popBackStack() },
@@ -84,7 +116,7 @@ fun AppNavHost(container: AppContainer) {
                 onOpenResult = { nav.navigate(Routes.result(it)) },
             )
         }
-        composable(Routes.TRIP, arguments = tripArgs) {
+        journeyDestination(Routes.TRIP, journey, arguments = tripArgs) {
             TripRoute(
                 viewModel = viewModel(factory = TripViewModel.factory(container)),
                 onBack = { nav.popBackStack() },
@@ -107,7 +139,7 @@ fun AppNavHost(container: AppContainer) {
                 },
             )
         }
-        composable(Routes.COST, arguments = costArgs) {
+        journeyDestination(Routes.COST, journey, arguments = costArgs) {
             CostFormRoute(
                 viewModel = viewModel(factory = CostFormViewModel.factory(container)),
                 onBack = { nav.popBackStack() },
@@ -115,7 +147,7 @@ fun AppNavHost(container: AppContainer) {
                 onSaved = { nav.popBackStack() },
             )
         }
-        composable(Routes.SETTLEMENT, arguments = tripArgs) { entry ->
+        journeyDestination(Routes.SETTLEMENT, journey, arguments = tripArgs) { entry ->
             SettlementRoute(
                 viewModel = viewModel(factory = SettlementViewModel.factory(container)),
                 tripId = entry.arguments?.getLong("tripId") ?: UNSAVED_ID,
@@ -126,7 +158,7 @@ fun AppNavHost(container: AppContainer) {
                 onOpenTrip = { nav.navigate(Routes.trip(it)) },
             )
         }
-        composable(Routes.RESULT, arguments = tripArgs) {
+        journeyDestination(Routes.RESULT, journey, arguments = tripArgs) {
             ResultRoute(
                 viewModel = viewModel(factory = ResultViewModel.factory(container)),
                 onBack = { nav.popBackStack() },
@@ -135,5 +167,21 @@ fun AppNavHost(container: AppContainer) {
         }
     }
 }
+    }
 }
+
+/** Each outgoing destination keeps its own banner layout until its fade has finished. */
+private fun androidx.navigation.NavGraphBuilder.journeyDestination(
+    route: String,
+    journey: com.gatita.core.ui.component.ActiveJourney?,
+    arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
+    content: @Composable androidx.compose.animation.AnimatedContentScope.(androidx.navigation.NavBackStackEntry) -> Unit,
+) {
+    composable(route, arguments = arguments) { entry ->
+        val scope = this
+        CompositionLocalProvider(com.gatita.core.ui.component.LocalActiveJourney provides
+            journey.takeUnless { route == Routes.HOME || route == Routes.TRIP }) {
+            content(scope, entry)
+        }
+    }
 }

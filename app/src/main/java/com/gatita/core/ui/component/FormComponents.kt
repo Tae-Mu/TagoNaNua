@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
@@ -23,6 +25,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /** 일반 텍스트 입력. 오류는 필드 아래와 접근성 semantics 양쪽에 표시한다. */
 @Composable
@@ -37,15 +40,14 @@ fun TextInput(
     keyboardType: KeyboardType = KeyboardType.Text,
     imeAction: ImeAction = ImeAction.Next,
 ) {
+    Column(modifier,verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Text(label,fontSize=15.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label) },
+
         isError = errorText != null,
-        supportingText = {
-            val text = errorText ?: supporting
-            if (text != null) Text(text)
-        },
+
         enabled = enabled,
         singleLine = true,
         colors=androidx.compose.material3.OutlinedTextFieldDefaults.colors(
@@ -54,10 +56,13 @@ fun TextInput(
             unfocusedBorderColor=MaterialTheme.colorScheme.outlineVariant),
         shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .semantics { if (errorText != null) error(errorText) },
+            .semantics { contentDescription=label; if (errorText != null) error(errorText) },
     )
+        (errorText?:supporting)?.let { Text(it,fontSize=13.sp,color=if(errorText!=null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+
 }
 
 @Composable
@@ -145,21 +150,23 @@ fun StepperRow(
         OutlinedButton(
         shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
+            contentPadding=PaddingValues(0.dp),
             onClick = { onValueChange(value - 1) },
             enabled = enabled && value > range.first,
             modifier = Modifier
-                .heightIn(min = 56.dp)
+                .size(50.dp)
                 .semantics { contentDescription = "$label 줄이기" },
-        ) { Text("−") }
+        ) { Text("−",fontSize=26.sp) }
         Text("$value$unit", style = MaterialTheme.typography.titleLarge)
         OutlinedButton(
         shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
+            contentPadding=PaddingValues(0.dp),
             onClick = { onValueChange(value + 1) },
             enabled = enabled && value < range.last,
             modifier = Modifier
-                .heightIn(min = 56.dp)
+                .size(50.dp)
                 .semantics { contentDescription = "$label 늘리기" },
-        ) { Text("+") }
+        ) { Text("+",fontSize=26.sp) }
     }
 }

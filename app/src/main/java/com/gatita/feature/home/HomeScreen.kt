@@ -19,8 +19,12 @@ import com.gatita.feature.common.Formatters
 import com.gatita.feature.publishing.DepartureScreen
 
 @Composable
-fun HomeRoute(viewModel:HomeViewModel,onOpenTrip:(Long)->Unit,onOpenSettlement:(Long)->Unit,onOpenHistory:()->Unit,onOpenSettlements:()->Unit=onOpenHistory) {
+fun HomeRoute(viewModel:HomeViewModel,onOpenTrip:(Long)->Unit,onOpenSettlement:(Long)->Unit,onOpenHistory:()->Unit,onOpenSettlements:()->Unit=onOpenHistory, activeContent:(@Composable (Long)->Unit)?=null) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var restoredTripId by rememberSaveable { mutableStateOf<Long?>(null) }
+    LaunchedEffect(state.activeTrip?.id) { state.activeTrip?.id?.let { restoredTripId=it } }
+    val activeId=state.activeTrip?.id?:restoredTripId
+    if(activeId!=null && activeContent!=null) { activeContent(activeId); return }
     var startedId by rememberSaveable { mutableStateOf<Long?>(null) }
     var startedName by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(viewModel) {viewModel.events.collect {event-> if(event is HomeEvent.OpenTrip) startedId=event.tripId }}
@@ -41,18 +45,7 @@ fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,
         when {
             state.isLoading -> LoadingBlock("저장된 여행을 불러오는 중")
             state.loadError!=null -> ErrorBlock(state.loadError,onRetryLoad)
-            state.activeTrip!=null -> {
-                val trip=state.activeTrip
-                Panel(Modifier.fillMaxWidth()) {
-                    Note("이어갈 여행이 있어요 · ${trip.tripDate}")
-                    Text(trip.name,fontSize=32.sp,fontWeight=FontWeight.Bold)
-                    Note("저장된 여행과 비용을 그대로 이어서 확인할 수 있어요.")
-                    Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                        Action("여행 이어가기",arrow=true){onOpenTrip(trip.id)}
-                        Action("여행 내역",primary=false){onOpenHistory()}
-                    }
-                }
-            }
+            state.activeTrip!=null -> LoadingBlock("여행 기록을 불러오는 중")
             prepare -> {
                 JourneySteps()
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(24.dp)) {
@@ -82,19 +75,24 @@ fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,
                 Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically) {
                     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(18.dp)) {
                         Note("TAGO · 타고, 나눠")
-                        Text("여행은 함께.\n정산은 가볍게.",fontSize=38.sp,lineHeight=46.sp,fontWeight=FontWeight.Bold)
-                        Note("출발부터 도착까지 기록하고,\n함께 탄 만큼 편하게 나눠요.")
+                        Text("여행은 함께.\n정산은 가볍게.",fontSize=46.sp,lineHeight=55.sp,fontWeight=FontWeight.Bold)
+                        Text("출발부터 도착까지 기록하고,\n함께 탄 만큼 편하게 나눠요.",fontSize=18.sp,lineHeight=28.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         Action("새 여행 준비",modifier=Modifier.widthIn(min=230.dp),arrow=true){prepare=true}
                         Note("인원만 확인하면 출발 준비 끝")
                     }
-                    Image(painterResource(R.drawable.vehicle),"차량 이미지 · 실제 연결 차량 아님",Modifier.weight(1f).height(220.dp))
+                    Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Image(painterResource(R.drawable.vehicle),"차량 예시 이미지",Modifier.fillMaxWidth().height(220.dp))
+                        Note("이번 여행을 함께할 차량")
+                        Text("연결 후 차량 정보를 표시해요",fontSize=20.sp,fontWeight=FontWeight.SemiBold)
+                        Note("차량 이미지는 디자인 예시예요")
+                    }
                 }
             }
         }
         if(!prepare) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Text("이어서 할 일 · ${state.pendingTrips.size}",Modifier.weight(1f),fontWeight=FontWeight.Bold)
-                Action("전체 정산",primary=false,leadingIcon=R.drawable.ic_receipt,arrow=true){onOpenSettlements()}
+                Action("전체 정산",primary=false,leadingIcon=R.drawable.ic_receipt,arrow=true,minHeight=48,textSize=14,horizontalPadding=12,iconGap=10){onOpenSettlements()}
             }
             if(state.pendingTrips.isEmpty()&&!state.isLoading&&state.loadError==null) EmptyState("미뤄둔 정산이 없어요","여행을 마치면 이곳에서 정산을 이어갈 수 있어요.")
             state.pendingTrips.forEach{SummaryRow(it){onOpenSettlement(it.tripId)}}

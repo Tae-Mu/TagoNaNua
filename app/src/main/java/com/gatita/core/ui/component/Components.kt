@@ -56,18 +56,30 @@ fun GatitaScaffold(
     maxWidthDp: Int = 1400,
     subtitle: String = "",
     statusLabel: String? = null,
+    backLabel: String? = null,
+    showJourneyBanner: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(Modifier.fillMaxSize().then(screenFade()),contentAlignment=Alignment.TopCenter) {
+    Box(Modifier.fillMaxSize(),contentAlignment=Alignment.TopCenter) {
     Column(Modifier.widthIn(max=maxWidthDp.dp).fillMaxSize().imePadding().verticalScroll(rememberScrollState())
-        .padding(horizontal=40.dp, vertical=28.dp), verticalArrangement=Arrangement.spacedBy(18.dp)) {
-        Row(Modifier.fillMaxWidth().padding(bottom=8.dp), verticalAlignment=Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text(title, style=MaterialTheme.typography.headlineMedium,
-                    fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
-                if(subtitle.isNotEmpty()) Note(subtitle)
+        .padding(horizontal=44.dp, vertical=36.dp), verticalArrangement=Arrangement.spacedBy(18.dp)) {
+        if(showJourneyBanner) LocalActiveJourney.current?.let { journey ->
+            androidx.compose.material3.Surface(onClick=journey.onOpen,color=MaterialTheme.colorScheme.secondaryContainer,
+                shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(horizontal=22.dp,vertical=18.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)) {
+                    androidx.compose.material3.Icon(androidx.compose.ui.res.painterResource(com.gatita.R.drawable.ic_route),null,tint=MaterialTheme.colorScheme.primary)
+                    Column(Modifier.weight(1f)) {Text("여행을 기록하고 있어요",color=MaterialTheme.colorScheme.primary);Note(journey.name)}
+                    Text("기록으로 돌아가기",color=MaterialTheme.colorScheme.primary);ChevronRight()
+                }
             }
-            if(onBack!=null) TextButton(onClick=onBack) { Text("‹ 돌아가기") }
+        }
+        if(onBack!=null) TextButton(onClick=onBack) { Text("‹ ${backLabel?:"돌아가기"}") }
+        if(title.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(bottom=8.dp), verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(title, style=MaterialTheme.typography.headlineMedium.copy(fontSize=androidx.compose.ui.unit.TextUnit(30f,androidx.compose.ui.unit.TextUnitType.Sp)),
+                    fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                if(subtitle.isNotEmpty()) Text(subtitle, style=MaterialTheme.typography.bodyLarge, color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if(statusLabel!=null) androidx.compose.material3.Surface(
                 color=MaterialTheme.colorScheme.surface,
                 border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
@@ -229,11 +241,13 @@ fun ActionButton(
     busyText: String = "처리 중…",
     enabled: Boolean = true,
 ) {
+    val interaction = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Button(
+        interactionSource = interaction,
         shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         onClick = onClick,
         enabled = enabled && !busy,
-        modifier = modifier
+        modifier = modifier.then(pressMotion(interaction, enabled && !busy))
             .fillMaxWidth()
             .heightIn(min = 56.dp),
     ) {
@@ -242,7 +256,7 @@ fun ActionButton(
             Spacer(Modifier.size(8.dp))
             Text(busyText)
         } else {
-            Text(text)
+            Text(text, fontSize=androidx.compose.ui.unit.TextUnit(18f,androidx.compose.ui.unit.TextUnitType.Sp),fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
         }
     }
 }
@@ -254,16 +268,18 @@ fun <T> ChoiceChips(
     label: (T) -> String,
     onSelect: (T) -> Unit,
     enabled: Boolean = true,
+    outlined: Boolean = true,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { option ->
             FilterChip(
+                border=androidx.compose.foundation.BorderStroke(1.dp,if(outlined)MaterialTheme.colorScheme.outlineVariant else Color.Transparent),
                 shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                 colors=androidx.compose.material3.FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primary,selectedLabelColor=MaterialTheme.colorScheme.onPrimary),
                 selected = option == selected,
                 onClick = { onSelect(option) },
                 enabled = enabled,
-                label = { Text(label(option)) },
+                label = { Text(label(option),fontSize=androidx.compose.ui.unit.TextUnit(16f,androidx.compose.ui.unit.TextUnitType.Sp)) },
                 modifier = Modifier.heightIn(min = 48.dp),
             )
         }
@@ -282,8 +298,5 @@ fun LabeledValue(label: String, value: String) {
 fun VerticalGap(height: Int = 8) = Spacer(Modifier.height(height.dp))
 
 /** Fade only: navigation must not move the page vertically. */
-@Composable private fun screenFade(): Modifier {
-    val alpha=androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(.65f) }
-    androidx.compose.runtime.LaunchedEffect(Unit) { alpha.animateTo(1f,androidx.compose.animation.core.tween(180)) }
-    return Modifier.then(Modifier.graphicsLayer { this.alpha=alpha.value })
-}
+internal data class ActiveJourney(val name:String,val onOpen:()->Unit)
+internal val LocalActiveJourney=androidx.compose.runtime.staticCompositionLocalOf<ActiveJourney?> { null }

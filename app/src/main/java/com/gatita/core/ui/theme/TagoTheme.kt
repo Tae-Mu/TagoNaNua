@@ -11,7 +11,11 @@ val Ink:Color @Composable get()=MaterialTheme.colorScheme.onSurface
 val Muted:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 val Tint:Color @Composable get()=MaterialTheme.colorScheme.secondaryContainer
 val Line:Color @Composable get()=MaterialTheme.colorScheme.outlineVariant
-val Suit=FontFamily(Font(R.font.suit))
+val Suit=FontFamily(
+ Font(R.font.suit,weight=androidx.compose.ui.text.font.FontWeight.Normal),
+ Font(R.font.suit_semibold,weight=androidx.compose.ui.text.font.FontWeight.SemiBold),
+ Font(R.font.suit_bold,weight=androidx.compose.ui.text.font.FontWeight.Bold),
+)
 @Composable fun TagoTheme(dark:Boolean=false,content:@Composable ()->Unit){
  val view=androidx.compose.ui.platform.LocalView.current
  if(!view.isInEditMode) androidx.compose.runtime.SideEffect {

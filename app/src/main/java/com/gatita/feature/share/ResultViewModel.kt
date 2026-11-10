@@ -58,6 +58,9 @@ data class PaymentResultView(
     val quality: String,
     val source: String,
     val calculationVersion: String,
+    val perPerson: String = "",
+    val splitPeople: Int = 0,
+    val includeDriver: Boolean = true,
 )
 
 sealed interface ResultContentState {
@@ -148,6 +151,12 @@ class ResultViewModel(
         tripName = s.tripName,
         tripDate = s.tripDate.toString(),
         total = Formatters.won(s.totalWon),
+        perPerson = s.shares.filter { s.includeDriver || !it.isDriver }.map { it.amountWon }.let { amounts ->
+            val low=amounts.minOrNull()?:0;val high=amounts.maxOrNull()?:0
+            if(low==high)Formatters.won(low) else "${Formatters.won(low).removeSuffix("원")}–${Formatters.won(high)}"
+        },
+        splitPeople=s.splitPeople,
+        includeDriver=s.includeDriver,
         fuelTotal = Formatters.won(s.fuelTotalWon),
         otherTotal = Formatters.won(s.otherTotalWon),
         peopleLine = "${s.people}명" +

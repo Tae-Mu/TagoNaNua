@@ -87,12 +87,12 @@ fun HistoryContent(
         Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(32.dp)) {
             Column(Modifier.weight(1f)) {
                 Note("여행한 달")
-                if(onMonthChange!=null)Action("${state.month.year}년 ${state.month.monthValue}월  ⌄",primary=false){monthPicker=true}
+                if(onMonthChange!=null)com.gatita.feature.publishing.MonthSelector("${state.month.year}년 ${state.month.monthValue}월",monthPicker){monthPicker=true}
                 else MonthBar(state.month,onPreviousMonth,onNextMonth)
             }
-            Column { Note("여행");Text("${state.monthlyTripCount} 회",fontSize=30.sp) }
-            Column { Note("함께 간 거리");Text(state.monthlyDistance,fontSize=30.sp) }
-            Column { Note("정산 확정");Text("${state.monthlySettledCount} 건",fontSize=30.sp) }
+            Column { Note("여행");AmountLabel(state.monthlyTripCount.toString(),"회",34) }
+            Column { Note("함께 간 거리");AmountLabel(state.monthlyDistance.removeSuffix("km").trim(),"km",34) }
+            Column { Note("정산 확정");AmountLabel(state.monthlySettledCount.toString(),"건",34) }
         }
         androidx.compose.material3.HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
         ChoiceChips(
@@ -102,10 +102,11 @@ fun HistoryContent(
                 when (it) {
                     HistoryFilter.ALL -> "전체"
                     HistoryFilter.PENDING -> "정산 전"
-                    HistoryFilter.SETTLED -> "확정"
+                    HistoryFilter.SETTLED -> "정산 확정"
                 }
             },
             onSelect = onFilterChange,
+            outlined = false,
         )
         when {
             state.error != null -> ErrorBlock(state.error, onRetry)
@@ -117,12 +118,17 @@ fun HistoryContent(
                         "여행을 기록하고 정산을 확정하면 이곳에 쌓입니다. 다른 달이나 필터도 확인해 보세요.",
                     )
                 } else {
-                    HistorySection.entries.forEach { section ->
-                        val rows = state.rows.filter { it.section == section }
-                        if (rows.isNotEmpty()) {
-                            SectionTitle(section.title)
-                            rows.forEach { HistoryCard(it, onOpen, onDelete) }
+                    listOf(state.rows.filter { it.section!=HistorySection.LEGACY }, state.rows.filter { it.section==HistorySection.LEGACY }).filter { it.isNotEmpty() }.forEach { group ->
+                    if(group.first().section==HistorySection.LEGACY) SectionTitle(HistorySection.LEGACY.title)
+                    androidx.compose.material3.Surface(shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                        border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
+                        Column {
+                            group.forEachIndexed { index,row ->
+                                if(index>0) androidx.compose.material3.HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+                                HistoryCard(row,onOpen,onDelete)
+                            }
                         }
+                    }
                     }
                 }
             }
@@ -145,12 +151,17 @@ private fun MonthBar(month: YearMonth, onPrevious: () -> Unit, onNext: () -> Uni
 
 @Composable
 private fun HistoryCard(row: HistoryRow, onOpen: (HistoryRow) -> Unit, onDelete: ((HistoryRow)->Unit)?) {
-    Panel(Modifier.fillMaxWidth().clickable(role=Role.Button,onClickLabel="${row.title} 열기"){onOpen(row)}) {
-        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(22.dp)) {
-            Column {Text(row.date.takeLast(2),fontSize=28.sp);Note(row.date.take(7))}
-            Column(Modifier.weight(1f)){Text(row.title,fontSize=20.sp);Note(listOfNotNull(row.distance,row.costSummary).joinToString(" · "));Note(row.statusLabel)}
-            Column(horizontalAlignment=Alignment.End){row.amount?.let{Text(it,fontSize=24.sp)};row.amountCaption?.let{Note(it)}}
-            Text("›")
+    Column(Modifier.fillMaxWidth().clickable(role=Role.Button,onClickLabel="${row.title} 열기"){onOpen(row)}.padding(horizontal=24.dp,vertical=20.dp)) {
+        Row(Modifier.heightIn(min=76.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(22.dp)) {
+            Column {Text(row.date.takeLast(2).toIntOrNull()?.toString()?:row.date.takeLast(2),fontSize=28.sp);Note("${row.date.substringAfter("-").substringBefore("-").toIntOrNull()?:""}월")}
+            androidx.compose.material3.VerticalDivider(Modifier.height(56.dp),color=MaterialTheme.colorScheme.outlineVariant)
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(row.title,fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold);Note(listOfNotNull(row.distance,row.costSummary).joinToString(" · "))}
+            Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                row.amount?.let { AmountLabel(it.removeSuffix("원"),"원",26) }
+                androidx.compose.material3.Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=androidx.compose.foundation.shape.RoundedCornerShape(6.dp)) { Text(row.statusLabel,Modifier.padding(horizontal=8.dp,vertical=4.dp),fontSize=12.sp,color=MaterialTheme.colorScheme.primary) }
+                if(row.section==HistorySection.LEGACY) row.amountCaption?.let{Note(it)}
+            }
+            ChevronRight()
             if(onDelete!=null && row.status!=TripStatus.IN_PROGRESS) androidx.compose.material3.TextButton({onDelete(row)}) {Text("목록 삭제")}
         }
     }
