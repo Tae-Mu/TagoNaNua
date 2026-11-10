@@ -83,9 +83,18 @@ fun HistoryContent(
     if(monthPicker)MonthPicker("${state.month.year}년 ${state.month.monthValue}월",{value->
         onMonthChange?.invoke(YearMonth.of(value.substringBefore("년").toInt(),value.substringAfter("년 ").substringBefore("월").toInt()));monthPicker=false
     },{monthPicker=false})
-    GatitaScaffold(title = "여행 내역", onBack = onBack) {
-        if(onMonthChange!=null)Action("${state.month.year}년 ${state.month.monthValue}월  ⌄",primary=false){monthPicker=true}
-        else MonthBar(state.month, onPreviousMonth, onNextMonth)
+    GatitaScaffold(title = "여행 내역", subtitle="함께 이동한 거리와 나눈 비용을 모았어요.") {
+        Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(32.dp)) {
+            Column(Modifier.weight(1f)) {
+                Note("여행한 달")
+                if(onMonthChange!=null)Action("${state.month.year}년 ${state.month.monthValue}월  ⌄",primary=false){monthPicker=true}
+                else MonthBar(state.month,onPreviousMonth,onNextMonth)
+            }
+            Column { Note("여행");Text("${state.monthlyTripCount} 회",fontSize=30.sp) }
+            Column { Note("함께 간 거리");Text(state.monthlyDistance,fontSize=30.sp) }
+            Column { Note("정산 확정");Text("${state.monthlySettledCount} 건",fontSize=30.sp) }
+        }
+        androidx.compose.material3.HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
         ChoiceChips(
             options = HistoryFilter.entries.toList(),
             selected = state.filter,
@@ -102,13 +111,6 @@ fun HistoryContent(
             state.error != null -> ErrorBlock(state.error, onRetry)
             state.isLoading -> LoadingBlock("내역을 불러오는 중")
             else -> {
-                InfoCard {
-                    Text(
-                        "이번 달 여행 ${state.monthlyTripCount}건 · 확정 ${state.monthlySettledCount}건 · 주행거리 ${state.monthlyDistance}",
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text("월 통계는 위 필터와 관계없이 그 달 전체 기준입니다.", style = MaterialTheme.typography.bodySmall)
-                }
                 if (state.rows.isEmpty()) {
                     EmptyBlock(
                         "이 달에 표시할 여행이 없습니다",

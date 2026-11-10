@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
@@ -53,18 +54,25 @@ fun GatitaScaffold(
     title: String,
     onBack: (() -> Unit)? = null,
     maxWidthDp: Int = 1400,
+    subtitle: String = "",
+    statusLabel: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(Modifier.fillMaxSize(),contentAlignment=Alignment.TopCenter) {
+    Box(Modifier.fillMaxSize().then(screenFade()),contentAlignment=Alignment.TopCenter) {
     Column(Modifier.widthIn(max=maxWidthDp.dp).fillMaxSize().imePadding().verticalScroll(rememberScrollState())
-        .padding(horizontal=32.dp, vertical=24.dp), verticalArrangement=Arrangement.spacedBy(18.dp)) {
-        if(onBack!=null) TextButton(onClick=onBack) { Text("‹ 돌아가기") }
-        Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically) {
-            Text(title, modifier=Modifier.weight(1f), style=MaterialTheme.typography.headlineMedium,
-                fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
-            androidx.compose.material3.Surface(color=MaterialTheme.colorScheme.secondaryContainer,
+        .padding(horizontal=40.dp, vertical=28.dp), verticalArrangement=Arrangement.spacedBy(18.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom=8.dp), verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(title, style=MaterialTheme.typography.headlineMedium,
+                    fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                if(subtitle.isNotEmpty()) Note(subtitle)
+            }
+            if(onBack!=null) TextButton(onClick=onBack) { Text("‹ 돌아가기") }
+            if(statusLabel!=null) androidx.compose.material3.Surface(
+                color=MaterialTheme.colorScheme.surface,
+                border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
                 shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
-                Text("수동 기록", Modifier.padding(horizontal=14.dp,vertical=10.dp), color=MaterialTheme.colorScheme.primary)
+                Text(statusLabel, Modifier.padding(horizontal=14.dp,vertical=10.dp), color=MaterialTheme.colorScheme.primary)
             }
         }
         content()
@@ -199,6 +207,10 @@ fun NumberField(
         },
         enabled = enabled,
         singleLine = true,
+        colors=androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor=MaterialTheme.colorScheme.background,
+            focusedContainerColor=MaterialTheme.colorScheme.surface,
+            unfocusedBorderColor=MaterialTheme.colorScheme.outlineVariant),
         shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         modifier = modifier
@@ -246,6 +258,8 @@ fun <T> ChoiceChips(
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { option ->
             FilterChip(
+                shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                colors=androidx.compose.material3.FilterChipDefaults.filterChipColors(selectedContainerColor=MaterialTheme.colorScheme.primary,selectedLabelColor=MaterialTheme.colorScheme.onPrimary),
                 selected = option == selected,
                 onClick = { onSelect(option) },
                 enabled = enabled,
@@ -266,3 +280,10 @@ fun LabeledValue(label: String, value: String) {
 
 @Composable
 fun VerticalGap(height: Int = 8) = Spacer(Modifier.height(height.dp))
+
+/** Fade only: navigation must not move the page vertically. */
+@Composable private fun screenFade(): Modifier {
+    val alpha=androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(.65f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { alpha.animateTo(1f,androidx.compose.animation.core.tween(180)) }
+    return Modifier.then(Modifier.graphicsLayer { this.alpha=alpha.value })
+}

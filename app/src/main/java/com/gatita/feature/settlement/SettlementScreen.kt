@@ -92,7 +92,7 @@ fun SettlementContent(
     onDismissConfirm: () -> Unit,
     onEditCosts: () -> Unit,
 ) {
-    GatitaScaffold(title = "정산 미리보기", onBack = onBack) {
+    GatitaScaffold(title = "정산 미리보기", onBack = onBack, subtitle="함께 쓴 비용을 확인하고, 편하게 나눠요.") {
         val preview = state.preview
         when {
             state.isLoading -> LoadingBlock("정산을 계산하는 중")
@@ -173,8 +173,12 @@ private fun PreviewBody(
     state.loadError?.let{ErrorMessage(it)}
     state.confirmError?.let{ErrorMessage(it)}
     if(!preview.canConfirm)preview.blockingReason?.let{ErrorMessage(it.userMessage())}
-    ActionButton("이 금액으로 확정",onRequestConfirm,busy=state.isConfirming,
-        enabled=preview.canConfirm&&!locked&&state.nameError==null&&state.loadError==null)
+    HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(24.dp)) {
+        Box(Modifier.weight(1f)) { Note("✓  확정 전에 비용과 인원을 한 번 더 확인해 주세요.") }
+        Action(if(state.isConfirming) "저장 중…" else "이 금액으로 확정",arrow=true,
+            enabled=preview.canConfirm&&!locked&&state.nameError==null&&state.loadError==null,onClick=onRequestConfirm)
+    }
 }
 
 @Composable private fun SurfaceSummary(preview:PaymentPreview) {

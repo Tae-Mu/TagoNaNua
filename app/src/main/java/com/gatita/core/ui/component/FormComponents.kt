@@ -48,6 +48,10 @@ fun TextInput(
         },
         enabled = enabled,
         singleLine = true,
+        colors=androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor=MaterialTheme.colorScheme.background,
+            focusedContainerColor=MaterialTheme.colorScheme.surface,
+            unfocusedBorderColor=MaterialTheme.colorScheme.outlineVariant),
         shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         modifier = modifier
@@ -64,6 +68,8 @@ fun SecondaryButton(
     enabled: Boolean = true,
 ) {
     OutlinedButton(
+        shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
         onClick = onClick,
         enabled = enabled,
         modifier = modifier
@@ -137,6 +143,8 @@ fun StepperRow(
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         OutlinedButton(
+        shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
             onClick = { onValueChange(value - 1) },
             enabled = enabled && value > range.first,
             modifier = Modifier
@@ -145,6 +153,8 @@ fun StepperRow(
         ) { Text("−") }
         Text("$value$unit", style = MaterialTheme.typography.titleLarge)
         OutlinedButton(
+        shape=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),
             onClick = { onValueChange(value + 1) },
             enabled = enabled && value < range.last,
             modifier = Modifier

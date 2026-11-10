@@ -65,7 +65,12 @@ fun CostFormContent(state:CostFormUiState,onBack:()->Unit,onRetryLoad:()->Unit,o
                     if(fuel) {
                         val liters=state.fuelLiters
                         NoticeMessage("계산한 주유량   ${liters?.let{"약 $it L"}?:"금액과 단가를 입력해 주세요"}")
-                        TextButton({details=!details},enabled=!state.isSaving){Text("주유 상세 정보 · 선택  ${if(details)"⌃" else "⌄"}")}
+                        Surface(onClick={details=!details},enabled=!state.isSaving,shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
+                            Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) { Text("주유 상세 정보 · 선택",fontSize=18.sp);Note("주유소와 날짜를 함께 남겨요") }
+                                Text(if(details) "⌃" else "⌄",fontSize=24.sp,color=MaterialTheme.colorScheme.primary)
+                            }
+                        }
                     }
                     if(!fuel||details) {
                         TextInput(when(state.kind){CostKind.FUEL->"주유소 · 선택";CostKind.PARKING->"주차 장소 · 선택";CostKind.TOLL->"톨게이트 / 이용 구간 · 선택";else->"비용 내용 · 선택"},

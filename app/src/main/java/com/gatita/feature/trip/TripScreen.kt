@@ -2,6 +2,7 @@ package com.gatita.feature.trip
 
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.HorizontalDivider
@@ -65,16 +66,32 @@ fun TripRoute(
         }
     }
     completed?.let { id->
-        GatitaScaffold("여행을 잘 마쳤어요") {
-            Panel(Modifier.fillMaxWidth()) {
-                Brand(false)
-                Text(state.trip?.name.orEmpty(),fontSize=32.sp,fontWeight=FontWeight.Bold)
-                Note("여행 기록과 함께 쓴 비용을 저장했어요.")
-                Text(Formatters.won(state.ledger?.includedTotalWon?:0),fontSize=40.sp)
-                Note("${state.ledger?.includedCount?:0}건의 비용 · ${state.segments.size}개 구간")
-                Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                    Action("정산하러 가기",arrow=true){onOpenSettlement(id)}
-                    Action("나중에 정산",primary=false){onBack()}
+        GatitaScaffold("여행 완료") {
+            Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.TopCenter) {
+                Column(Modifier.widthIn(max=700.dp).fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                    Brand(false)
+                    Note("함께한 여정, 기록 완료")
+                    Text("안전하게 도착했어요",fontSize=36.sp,fontWeight=FontWeight.Bold)
+                    Note("수고했어요. 함께한 여행을 돌아볼까요?")
+                    com.gatita.feature.publishing.MotionSection(true,180,14f) {
+                        Panel(Modifier.fillMaxWidth()) {
+                            Note("${state.trip?.tripDate}")
+                            Text(state.trip?.name.orEmpty(),fontSize=24.sp,fontWeight=FontWeight.Bold)
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(28.dp)) {
+                                Column(Modifier.weight(1f)) { Note("함께 이동한 거리");Text(state.recordedDistance?:"미기록",fontSize=36.sp,color=MaterialTheme.colorScheme.primary) }
+                                Column(Modifier.weight(1f)) { Note("구간 경과 시간");Text(state.recordedMinutes?.let { "$it 분" }?:"미기록",fontSize=32.sp) }
+                            }
+                            HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+                            Note("${state.segments.size}개 구간 기록 · 함께 탄 ${state.trip?.people}명")
+                        }
+                    }
+                    Note("비용 ${state.ledger?.includedCount?:0}건 · ${Formatters.won(state.ledger?.includedTotalWon?:0)}")
+                    Text("이제 함께 쓴 비용을 나눠보세요.")
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                        Action("나중에 정산",primary=false,modifier=Modifier.weight(1f)){onBack()}
+                        Action("정산하러 가기",modifier=Modifier.weight(1.35f),arrow=true){onOpenSettlement(id)}
+                    }
+                    Note("나중에 정산해도 ‘정산’ 메뉴에서 이어갈 수 있어요.")
                 }
             }
         }
@@ -133,8 +150,9 @@ fun TripContent(
 ) {
     var showCosts by rememberSaveable { mutableStateOf(false) }
     var showSegmentForm by rememberSaveable { mutableStateOf(false) }
-    GatitaScaffold(title = if(showCosts)"이번 여행 비용" else state.trip?.name?:"여행 기록",
-        onBack = if(showCosts)({showCosts=false}) else onBack) {
+    GatitaScaffold(title = if(showCosts)"이번 여행 비용" else if(state.pausedAt!=null) "잠시 멈춘 여행" else state.trip?.name?:"여행 기록",
+        onBack = if(showCosts)({showCosts=false}) else onBack,
+        subtitle=if(showCosts) state.trip?.name.orEmpty() else if(state.pausedAt!=null) "잠시 쉬어도, 함께한 여행은 이어져요." else "${state.trip?.tripDate} · 함께 타는 ${state.trip?.people?:0}명 · 수동 기록") {
         val trip = state.trip
         val ledger = state.ledger
         when {
@@ -145,30 +163,24 @@ fun TripContent(
 
             else -> {
                 val busy=state.isChangingPause||state.isMutating||state.isCompleting||state.isDiscarding||state.isSavingSegment
-                Note("${trip.tripDate} · 함께 타는 ${trip.people}명 · ${Formatters.source(trip.source)}")
-                if(!showCosts && trip.status==TripStatus.IN_PROGRESS && state.pausedAt!=null) {
-                    Panel(Modifier.fillMaxWidth()) {
-                        Text("잠시 멈춘 여행",fontSize=28.sp,fontWeight=FontWeight.Bold)
-                        Note("여기까지의 구간과 비용을 보관했어요. 같은 여행을 이어갈 수 있어요.")
-                        Action("여행 이어가기",enabled=!busy) { onPauseChange(false) }
-                    }
-                }
                 state.pauseError?.let { ErrorMessage(it) }
                 if(showCosts) {
                     if(ledger.editable) Action("비용 추가",enabled=!busy,onClick=onAddCost)
                     CostLedgerSection(ledger,busy,onIncludedChange,onEditCost,onRequestDelete)
+                } else if(trip.status==TripStatus.IN_PROGRESS && state.pausedAt!=null) {
+                    PausedTripCard(state,busy,{onPauseChange(false)},onAddCost,{showCosts=true},onRequestComplete)
                 } else {
                     androidx.compose.material3.Surface(shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
                         border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
                         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),verticalAlignment=Alignment.CenterVertically) {
-                            Column(Modifier.weight(1.15f).fillMaxHeight().background(Navy).padding(26.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
+                            Column(Modifier.weight(1.15f).fillMaxHeight().background(Navy).padding(32.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
                                 Text(if(trip.status==TripStatus.IN_PROGRESS && state.pausedAt!=null) "잠시 쉬는 중" else Formatters.tripStatus(trip.status),color=Color(0xFFC5D9E8))
                                 Text("함께 이동한 거리",color=Color(0xFFC5D9E8))
-                                Text(state.recordedDistance?:"기록 없음",fontSize=44.sp,color=Color.White)
+                                if(state.recordedDistance!=null) AmountLabel(state.recordedDistance.removeSuffix(" km"),"km",72,Color.White) else Text("기록 없음",fontSize=40.sp,color=Color.White)
                                 HorizontalDivider(color=Color.White.copy(alpha=.15f))
                                 Text("구간 경과 시간   ${state.recordedMinutes?.let{"$it 분"}?:"기록 없음"}",color=Color.White)
                             }
-                            Column(Modifier.weight(1f).padding(26.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
+                            Column(Modifier.weight(1f).padding(32.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
                                 Note("TRIP STATUS")
                                 Text(if(trip.status==TripStatus.IN_PROGRESS && state.pausedAt!=null)"기록을 안전하게\n보관하고 있어요" else if(trip.status==TripStatus.IN_PROGRESS)"여행은 계속\n이어지고 있어요" else "함께한 여행을\n기록했어요",fontSize=28.sp,fontWeight=FontWeight.Bold)
                                 Note("차량 자동 기록은 연결 전이에요.\n필요할 때 구간을 직접 저장해 주세요.")
@@ -182,10 +194,22 @@ fun TripContent(
                         if(trip.status==TripStatus.IN_PROGRESS && state.pausedAt==null) TextButton({showSegmentForm=!showSegmentForm},enabled=!busy){Text(if(showSegmentForm)"입력 닫기" else "구간 기록 +")}
                     }
                     if(state.segments.isEmpty()) Note("아직 저장된 구간이 없어요. 비용만 기록해도 정산할 수 있어요.")
-                    else state.segments.forEach{ row->Panel(Modifier.fillMaxWidth()){
-                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("구간 ${row.seq}");Text(row.distance,fontSize=22.sp)}
-                        Note(row.range+" · "+row.efficiency)
-                    }}
+                    else androidx.compose.foundation.lazy.LazyRow(
+                        Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(state.segments.size) { index ->
+                            val row=state.segments[index]
+                            Panel(Modifier.width(320.dp)) {
+                                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                                    Note("구간 ${row.seq.toString().padStart(2,'0')}")
+                                    Text("✓ 저장됨",fontSize=12.sp,color=MaterialTheme.colorScheme.primary)
+                                }
+                                Text(row.distance,fontSize=30.sp)
+                                Note(row.range)
+                                Note(row.efficiency)
+                            }
+                        }
+                    }
                     if(showSegmentForm&&trip.status==TripStatus.IN_PROGRESS&&state.pausedAt==null) Panel(Modifier.fillMaxWidth()) {
                         SegmentForm(state,onEndOdometerChange,onEfficiencyChange,onEfficiencyUnitChange,onSaveSegment)
                     }
@@ -255,22 +279,67 @@ fun TripContent(
     }
 
     if (state.showCompleteConfirm) {
-        AlertDialog(
-            onDismissRequest = onDismissComplete,
-            title = { Text("여행을 마칠까요?") },
-            text = {
-                Text(
-                    "마친 뒤에는 구간을 더 기록할 수 없고 정산 단계로 넘어갑니다. 비용은 정산 확정 전까지 수정할 수 있습니다. " +
-                        "저장된 구간이 없으면 거리 미기록으로 표시합니다.",
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = onConfirmComplete, modifier = Modifier.heightIn(min = 48.dp)) { Text("마치기") }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissComplete, modifier = Modifier.heightIn(min = 48.dp)) { Text("취소") }
-            },
-        )
+        androidx.compose.ui.window.Dialog(onDismissRequest=onDismissComplete) {
+            Panel(Modifier.widthIn(max=480.dp).fillMaxWidth()) {
+                IconBadge(com.gatita.R.drawable.ic_flag)
+                Text("이번 여행을 마칠까요?",fontSize=26.sp,fontWeight=FontWeight.Bold)
+                Note("기록한 구간을 모아\n함께 나눌 비용을 확인해요.")
+                Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(22.dp),horizontalArrangement=Arrangement.spacedBy(32.dp)) {
+                        Column(Modifier.weight(1f)) { Note("총 이동 거리");Text(state.recordedDistance?:"미기록",fontSize=28.sp) }
+                        Column(Modifier.weight(1f)) { Note("기록된 구간");Text("${state.segments.size} 개",fontSize=28.sp) }
+                    }
+                }
+                Note("여행을 마친 뒤 기록을 확인하고 정산할 수 있어요.")
+                Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                    Action("계속 기록",primary=false,modifier=Modifier.weight(1f),onClick=onDismissComplete)
+                    Action("여행 완료",modifier=Modifier.weight(1f),enabled=!state.isCompleting,onClick=onConfirmComplete)
+                }
+            }
+        }
+    }
+}
+
+@Composable private fun IconBadge(icon:Int) {
+    Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp)) {
+        androidx.compose.material3.Icon(androidx.compose.ui.res.painterResource(icon),null,Modifier.padding(14.dp).size(24.dp),tint=MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable private fun PausedTripCard(state:TripUiState,busy:Boolean,onResume:()->Unit,onAdd:()->Unit,onCosts:()->Unit,onFinish:()->Unit) {
+    Panel(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Note("Ⅱ  이어갈 수 있는 여행")
+                Text(state.trip?.name.orEmpty(),fontSize=28.sp,fontWeight=FontWeight.Bold)
+                Note("함께 타는 ${state.trip?.people}명")
+            }
+            IconBadge(com.gatita.R.drawable.ic_route)
+        }
+        Surface(color=Navy,shape=androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) {
+            Row(Modifier.fillMaxWidth().padding(24.dp),horizontalArrangement=Arrangement.spacedBy(32.dp),verticalAlignment=Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text("함께 이동한 거리",color=Color(0xFFC5D9E8));Text(state.recordedDistance?:"미기록",fontSize=40.sp,color=Color.White) }
+                Metric("구간 경과 시간",state.recordedMinutes?.let { "$it 분" }?:"— 분",true)
+                Metric("기록한 구간","${state.segments.size} 개",true)
+            }
+        }
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(18.dp)) {
+            Column(Modifier.weight(1f).clickable(onClick=onCosts)) { Text("이번 여행 비용  ${state.ledger?.count?:0}건",fontWeight=FontWeight.SemiBold);Note("등록한 비용도 함께 보관했어요.  ›") }
+            Text(Formatters.won(state.ledger?.registeredTotalWon?:0),fontSize=24.sp)
+            Action("비용 추가",primary=false,enabled=!busy,onClick=onAdd)
+        }
+        HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {Text("✓  여기까지 기록했어요");Note("이 기기에 저장한 여행을 그대로 이어가요.")}
+            Action("여행 이어가기",modifier=Modifier.widthIn(min=230.dp),arrow=true,enabled=!busy,onClick=onResume)
+        }
+    }
+    Panel(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)) {
+            IconBadge(com.gatita.R.drawable.ic_flag)
+            Column(Modifier.weight(1f)) {Text("목적지에 도착하셨나요?",fontWeight=FontWeight.SemiBold);Note("여행을 마치고 함께 쓴 비용을 확인하세요.")}
+            Action("여행 마치기",primary=false,enabled=!busy,onClick=onFinish)
+        }
     }
 }
 

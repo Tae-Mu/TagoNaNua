@@ -72,6 +72,7 @@ fun AppNavHost(container: AppContainer) {
                 onOpenTrip = { nav.navigate(Routes.trip(it)) },
                 onOpenSettlement = { nav.navigate(Routes.settlement(it)) },
                 onOpenHistory = { nav.navigate(Routes.HISTORY) },
+                onOpenSettlements = { nav.navigate("settlements") },
             )
         }
         composable(Routes.HISTORY) {

@@ -19,7 +19,7 @@ import com.gatita.feature.common.Formatters
 import com.gatita.feature.publishing.DepartureScreen
 
 @Composable
-fun HomeRoute(viewModel:HomeViewModel,onOpenTrip:(Long)->Unit,onOpenSettlement:(Long)->Unit,onOpenHistory:()->Unit) {
+fun HomeRoute(viewModel:HomeViewModel,onOpenTrip:(Long)->Unit,onOpenSettlement:(Long)->Unit,onOpenHistory:()->Unit,onOpenSettlements:()->Unit=onOpenHistory) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var startedId by rememberSaveable { mutableStateOf<Long?>(null) }
     var startedName by rememberSaveable { mutableStateOf("") }
@@ -27,7 +27,7 @@ fun HomeRoute(viewModel:HomeViewModel,onOpenTrip:(Long)->Unit,onOpenSettlement:(
     Box(Modifier.fillMaxSize()) {
         HomeContent(state,viewModel::onNameChange,viewModel::onStartOdometerChange,
             {startedName=state.nameInput.ifBlank{"새로운 여행"};viewModel.startTrip()},viewModel::observe,
-            onOpenTrip,onOpenSettlement,onOpenHistory,viewModel::onPeopleChange,viewModel::onIncludeDriverChange)
+            onOpenTrip,onOpenSettlement,onOpenHistory,viewModel::onPeopleChange,viewModel::onIncludeDriverChange,onOpenSettlements)
         startedId?.let { id-> DepartureScreen(startedName,onReveal={},onFinished={startedId=null;onOpenTrip(id)}) }
     }
 }
@@ -35,9 +35,9 @@ fun HomeRoute(viewModel:HomeViewModel,onOpenTrip:(Long)->Unit,onOpenSettlement:(
 @Composable
 fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,onStartOdometerChange:(String)->Unit,
     onStartTrip:()->Unit,onRetryLoad:()->Unit,onOpenTrip:(Long)->Unit,onOpenSettlement:(Long)->Unit,onOpenHistory:()->Unit,
-    onPeopleChange:(Int)->Unit={},onIncludeDriverChange:(Boolean)->Unit={}) {
+    onPeopleChange:(Int)->Unit={},onIncludeDriverChange:(Boolean)->Unit={},onOpenSettlements:()->Unit=onOpenHistory) {
     var prepare by rememberSaveable { mutableStateOf(false) }
-    GatitaScaffold(if(prepare)"출발 준비" else "오늘은 어디로 떠나세요?",if(prepare)({prepare=false}) else null) {
+    GatitaScaffold(if(prepare)"출발 준비" else "오늘은 어디로 떠나세요?",if(prepare)({prepare=false}) else null, subtitle=if(prepare) "인원을 확인하고, 함께할 여행을 시작해요." else "함께한 여정의 기름값, 타고가 나눠드려요.", statusLabel="수동 기록") {
         when {
             state.isLoading -> LoadingBlock("저장된 여행을 불러오는 중")
             state.loadError!=null -> ErrorBlock(state.loadError,onRetryLoad)
@@ -53,22 +53,40 @@ fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,onStartOdometerCha
                     }
                 }
             }
-            prepare -> Panel(Modifier.fillMaxWidth()) {
-                TextInput("여행 이름 · 선택",state.nameInput,onNameChange,errorText=state.nameError,enabled=!state.isStarting)
-                StepperRow("함께 타는 인원",state.people,1..8,onPeopleChange,enabled=!state.isStarting)
-                SwitchRow("본인도 정산에 포함",state.includeDriver,onIncludeDriverChange,enabled=!state.isStarting&&state.people>1)
-                NumberField("출발 계기판 주행거리 (km)",state.startOdometerInput,onStartOdometerChange,
-                    errorText=state.startOdometerError,supporting="차량 연동 전이에요. 계기판의 누적 주행거리를 직접 입력해 주세요.",enabled=!state.isStarting)
-                state.startError?.let{ErrorMessage(it)}
-                ActionButton("여행 기록 시작",onStartTrip,busy=state.isStarting)
+            prepare -> {
+                JourneySteps()
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(24.dp)) {
+                    Panel(Modifier.weight(1.15f)) {
+                        Note("YOUR NEXT JOURNEY")
+                        Text("이번 여행을 알려주세요",fontSize=26.sp,fontWeight=FontWeight.Bold)
+                        TextInput("여행 이름 · 선택",state.nameInput,onNameChange,errorText=state.nameError,enabled=!state.isStarting)
+                        Note("비워두면 ‘새로운 여행’으로 표시해요.")
+                        HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+                        StepperRow("함께 타는 인원",state.people,1..8,onPeopleChange,enabled=!state.isStarting)
+                        SwitchRow("본인도 정산에 포함",state.includeDriver,onIncludeDriverChange,enabled=!state.isStarting&&state.people>1)
+                        NumberField("출발 계기판 주행거리 (km)",state.startOdometerInput,onStartOdometerChange,
+                            errorText=state.startOdometerError,supporting="계기판의 누적 주행거리를 입력해 주세요.",enabled=!state.isStarting)
+                        state.startError?.let{ErrorMessage(it)}
+                        ActionButton("여행 기록 시작",onStartTrip,busy=state.isStarting)
+                    }
+                    Panel(Modifier.weight(1f)) {
+                        Image(painterResource(R.drawable.vehicle),"차량 예시 이미지",Modifier.fillMaxWidth().height(190.dp))
+                        Text("함께 떠날 준비가 됐나요?",fontSize=22.sp,fontWeight=FontWeight.SemiBold)
+                        Note("차량 연결 전 · 수동 기록")
+                        HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+                        Text("비용은 여행 중에도 추가할 수 있어요",fontWeight=FontWeight.SemiBold)
+                        Note("주유·주차·톨비를 한곳에 모으고, 도착 후 함께 나눠요.")
+                    }
+                }
             }
             else -> Panel(Modifier.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically) {
                     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(18.dp)) {
                         Note("TAGO · 타고, 나눠")
                         Text("여행은 함께.\n정산은 가볍게.",fontSize=38.sp,lineHeight=46.sp,fontWeight=FontWeight.Bold)
-                        Note("함께 쓴 비용을 기록하고,\n함께 탄 만큼 편하게 나눠요.")
-                        Action("새 여행 준비",arrow=true){prepare=true}
+                        Note("출발부터 도착까지 기록하고,\n함께 탄 만큼 편하게 나눠요.")
+                        Action("새 여행 준비",modifier=Modifier.widthIn(min=230.dp),arrow=true){prepare=true}
+                        Note("인원만 확인하면 출발 준비 끝")
                     }
                     Image(painterResource(R.drawable.vehicle),"차량 이미지 · 실제 연결 차량 아님",Modifier.weight(1f).height(220.dp))
                 }
@@ -77,10 +95,18 @@ fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,onStartOdometerCha
         if(!prepare) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Text("이어서 할 일 · ${state.pendingTrips.size}",Modifier.weight(1f),fontWeight=FontWeight.Bold)
-                Action("전체 내역",primary=false,leadingIcon=R.drawable.ic_receipt){onOpenHistory()}
+                Action("전체 정산",primary=false,leadingIcon=R.drawable.ic_receipt,arrow=true){onOpenSettlements()}
             }
             if(state.pendingTrips.isEmpty()&&!state.isLoading&&state.loadError==null) EmptyState("미뤄둔 정산이 없어요","여행을 마치면 이곳에서 정산을 이어갈 수 있어요.")
             state.pendingTrips.forEach{SummaryRow(it){onOpenSettlement(it.tripId)}}
+            Row(Modifier.fillMaxWidth().padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(24.dp)) {
+                listOf("출발 전에 시작" to "운전자를 포함한 인원을 확인해요.","여행을 차곡차곡" to "구간과 비용을 같은 여행에 모아요.","도착하면 정산" to "금액을 확정하고 요약을 공유해요.").forEachIndexed { index, step ->
+                    Row(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                        Note("0${index+1}")
+                        Column { Text(step.first,fontSize=14.sp,fontWeight=FontWeight.SemiBold);Note(step.second) }
+                    }
+                }
+            }
         }
     }
 }
@@ -112,4 +138,18 @@ fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,onStartOdometerCha
             }
         }
     }
+}
+
+@Composable private fun JourneySteps() {
+    Row(horizontalArrangement=Arrangement.spacedBy(24.dp)) {
+        listOf("출발 준비","여행 기록","금액 확인","정산 완료").forEachIndexed { index, title ->
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                Surface(color=if(index==0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,shape=androidx.compose.foundation.shape.CircleShape) {
+                    Text("0${index+1}",Modifier.padding(9.dp),fontSize=12.sp,color=if(index==0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Note(title)
+            }
+        }
+    }
+    HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
 }
