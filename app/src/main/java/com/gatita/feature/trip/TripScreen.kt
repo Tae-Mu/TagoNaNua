@@ -107,10 +107,6 @@ fun TripRoute(
         onRequestDelete = viewModel::requestDelete,
         onConfirmDelete = viewModel::confirmDelete,
         onDismissDelete = viewModel::dismissDelete,
-        onEndOdometerChange = viewModel::onEndOdometerChange,
-        onEfficiencyChange = viewModel::onEfficiencyChange,
-        onEfficiencyUnitChange = viewModel::onEfficiencyUnitChange,
-        onSaveSegment = viewModel::saveSegment,
         onRequestComplete = viewModel::requestComplete,
         onConfirmComplete = viewModel::confirmComplete,
         onDismissComplete = viewModel::dismissComplete,
@@ -134,10 +130,6 @@ fun TripContent(
     onRequestDelete: (Cost) -> Unit,
     onConfirmDelete: () -> Unit,
     onDismissDelete: () -> Unit,
-    onEndOdometerChange: (String) -> Unit,
-    onEfficiencyChange: (String) -> Unit,
-    onEfficiencyUnitChange: (EfficiencyUnit) -> Unit,
-    onSaveSegment: () -> Unit,
     onRequestComplete: () -> Unit,
     onConfirmComplete: () -> Unit,
     onDismissComplete: () -> Unit,
@@ -182,7 +174,7 @@ fun TripContent(
                             Column(Modifier.weight(1f).padding(32.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
                                 Note("TRIP STATUS")
                                 Text(if(trip.status==TripStatus.IN_PROGRESS && state.pausedAt!=null)"기록을 안전하게\n보관하고 있어요" else if(trip.status==TripStatus.IN_PROGRESS)"여행은 계속\n이어지고 있어요" else "함께한 여행을\n기록했어요",fontSize=28.sp,fontWeight=FontWeight.Bold)
-                                Note("이동 거리와 구간은 차량에서 받아요.\n현재 차량 연결을 기다리고 있어요.")
+                                Note(if(trip.status==TripStatus.IN_PROGRESS && state.recordedDistance==null) "이동 거리와 구간은 차량에서 받아요.\n현재 차량 연결을 기다리고 있어요." else "이동 거리와 구간은 차량에서 받아요.")
                                 HorizontalDivider()
                                 Text("저장된 구간  ${state.segments.size}개",fontSize=20.sp)
                             }
@@ -339,16 +331,6 @@ fun TripContent(
 }
 
 @Composable
-private fun SegmentCard(row: SegmentRow) {
-    InfoCard {
-        Text("구간 ${row.seq} · ${row.distance}", style = MaterialTheme.typography.titleMedium)
-        Text(row.range, style = MaterialTheme.typography.bodyMedium)
-        Text("연비(기록용): ${row.efficiency}", style = MaterialTheme.typography.bodyMedium)
-        SourceLabel(row.source)
-    }
-}
-
-@Composable
 private fun DiscardSection(state: TripUiState, onRequestDiscard: () -> Unit) {
     SectionTitle("잘못 시작한 여행")
     Text(
@@ -360,22 +342,5 @@ private fun DiscardSection(state: TripUiState, onRequestDiscard: () -> Unit) {
         text = if (state.isDiscarding) "닫는 중…" else "빈 여행 닫기",
         onClick = onRequestDiscard,
         enabled = !state.isDiscarding && !state.isCompleting && !state.isSavingSegment && !state.isMutating,
-    )
-}
-
-@Composable
-private fun CompleteSection(state: TripUiState, onRequestComplete: () -> Unit) {
-    SectionTitle("여행 마치기")
-    Text(
-        "결제한 비용을 모두 입력했다면 여행을 마치고 정산으로 넘어가세요. 거리를 기록하지 않은 0km 여행도 비용이 있으면 마칠 수 있습니다.",
-        style = MaterialTheme.typography.bodyMedium,
-    )
-    state.completeError?.let { ErrorMessage(it) }
-    ActionButton(
-        text = "여행 마치고 정산하기",
-        onClick = onRequestComplete,
-        busy = state.isCompleting,
-        busyText = "마치는 중…",
-        enabled = !state.isSavingSegment && !state.isMutating,
     )
 }

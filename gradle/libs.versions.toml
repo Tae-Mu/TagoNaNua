@@ -15,6 +15,8 @@ activityCompose = "1.9.3"
 lifecycle = "2.8.7"
 navigationCompose = "2.8.5"
 zxing = "3.5.3"
+# Pleos Vehicle SDK. 공식 연동 가이드(Importing Vehicle SDK)의 기준 버전.
+pleosVehicle = "2.3.2"
 
 [libraries]
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
@@ -41,6 +43,7 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 # QR 인코딩: 순수 Java 라이브러리(Apache-2.0). 네트워크·서버를 쓰지 않는다.
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+pleos-vehicle = { module = "ai.pleos.playground:Vehicle", version.ref = "pleosVehicle" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
