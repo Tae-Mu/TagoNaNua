@@ -12,6 +12,8 @@ Room을 통해 차량 내부 SQLite에 저장합니다. 현재 스키마 버전�
 | payment_settlements | 확정된 결제액 정산 | totalWon, fuelTotalWon, otherTotalWon, people, includeDriver, splitPeople, sourceTripRevision, calculationVersion `payments-v1`, 기록 메타데이터 |
 | payment_settlement_costs | 확정 당시 비용 복사본 | 제외 비용 포함. originalCostId는 추적용이며 FK 아님 |
 | payment_settlement_shares | 분담액 | PK(settlementId, ordinal). 운전자 ordinal 0은 제외해도 0원 행 보존 |
+| app_settings | 표시 이름·운전자 포함 기본값·화면 모드 | v3, id=1 싱글턴 |
+| trip_sessions | 수동 일시정지·목록 숨김 | v4, tripId PK/FK, pausedAt·hidden |
 | fuel_prices, settlements, settlement_items, settlement_shares | **v1 옛 추정 정산 이력** | 읽기 전용 legacy. 새 정산에 사용하지 않음 |
 
 주유량(L)은 파생값이므로 저장하지 않습니다. 새 `fuel_prices` 입력은 현재 흐름에 없습니다(v1 테이블만 이력으로 남김).
@@ -33,7 +35,7 @@ Room을 통해 차량 내부 SQLite에 저장합니다. 현재 스키마 버전�
 - v1 테이블은 그대로 두고 trips에 컬럼만 추가, 새 테이블 4개(costs, payment_settlements, payment_settlement_costs, payment_settlement_shares)를 생성합니다.
 - v1 여행 보정값: name '새로운 여행', vehicleLabel '', revision 0, tripDate = startedAt을 **UTC**로 해석한 날짜, zoneId 'UTC'(v1은 시간대를 저장하지 않음), people = 옛 정산이 있으면 그 headcount(8 초과 가능), 없으면 1, includeDriver 1.
 - v1 정산은 **옛 추정 정산(legacy)**으로 계속 읽히며 결제액 정산으로 재계산하거나 변환하지 않습니다.
-- 마이그레이션의 실제 데이터 보존은 기기 테스트(`MigrationTest`)로 검증해야 하며, 새 구현에서는 아직 실행하지 않았습니다([테스트 전략](testing.md)).
+- 마이그레이션의 실제 데이터 보존은 기기 테스트(`MigrationTest`)로 검증해야 하며, 2026-11-09 전체 연결 검수 및 2026-11-10 기기 테스트에서 실행했습니다([테스트 전략](testing.md)).
 
 ## html-api-spec과의 차이
 
@@ -43,9 +45,9 @@ Room을 통해 차량 내부 SQLite에 저장합니다. 현재 스키마 버전�
 | 상태 RECORDING/PAUSED/COMPLETED/SETTLED | IN_PROGRESS/FINISHED/SETTLED (PAUSED 없음) |
 | active_trip 싱글턴 테이블 | trips.activeSlot 유일 인덱스 |
 | command_receipts 멱등 테이블 | 없음. costs/payment_settlements의 requestId 유일 인덱스만 사용 |
-| app_settings | 없음 |
+| app_settings | v3 구현. v4 trip_sessions 추가 |
 | trip_segments 컬럼 구성 | 기존 v1 segments 재사용 |
-| 모든 FK CASCADE(여행 삭제) | 일반 여행 삭제 기능 없음. 예외로 구간·비용이 없는 IN_PROGRESS 여행만 `TripDao.deleteIfEmptyActive`(조건부 DELETE, 트랜잭션 내 재검사)로 삭제. 구간·정산 FK는 RESTRICT, 비용 FK는 CASCADE라 조건에서 비용 부재를 반드시 확인 |
+| 모든 FK CASCADE(여행 삭제) | 완료 여행은 trip_sessions.hidden으로 목록에서 숨기며 원본을 보존. 예외로 구간·비용이 없는 IN_PROGRESS 여행만 `TripDao.deleteIfEmptyActive`(조건부 DELETE, 트랜잭션 내 재검사)로 삭제. 구간·정산 FK는 RESTRICT, 비용 FK는 CASCADE라 조건에서 비용 부재를 반드시 확인 |
 
 Room 스키마 이력을 app/schemas에 관리하고 기존 데이터를 유지하는 마이그레이션을 작성합니다. 계산 정책은 [아키텍처](architecture.md)를 따릅니다.
 

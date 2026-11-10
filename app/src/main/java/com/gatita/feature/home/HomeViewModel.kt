@@ -49,8 +49,6 @@ data class HomeUiState(
     val people: Int = 4,
     val includeDriver: Boolean = true,
     val nameError: String? = null,
-    val startOdometerInput: String = "",
-    val startOdometerError: String? = null,
     val isStarting: Boolean = false,
     val startError: String? = null,
 )
@@ -65,6 +63,7 @@ class HomeViewModel(
     private val startTripUseCase: StartTripUseCase,
     private val clock: Clock,
     private val settings: com.gatita.domain.repository.SettingsRepository? = null,
+    private val vehicle: com.gatita.domain.vehicle.VehicleDataSource? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
@@ -79,7 +78,7 @@ class HomeViewModel(
         observe()
         settings?.let { repository -> viewModelScope.launch {
             repository.observe().catch { }.collect { value ->
-                if (_state.value.nameInput.isEmpty() && _state.value.startOdometerInput.isEmpty())
+                if (_state.value.nameInput.isEmpty())
                     _state.update { it.copy(includeDriver=if(it.people==1) true else value.includeDriver) }
             }
         } }
@@ -111,10 +110,6 @@ class HomeViewModel(
         _state.update { it.copy(nameInput = text, nameError = null, startError = null) }
     }
 
-    fun onStartOdometerChange(text: String) {
-        _state.update { it.copy(startOdometerInput = text, startOdometerError = null, startError = null) }
-    }
-
     fun onPeopleChange(value:Int) {
         if(value in 1..8) _state.update { it.copy(people=value,includeDriver=if(value==1) true else it.includeDriver) }
     }
@@ -123,7 +118,6 @@ class HomeViewModel(
     fun startTrip() {
         if (!startGuard.tryAcquire()) return
         val current = _state.value
-        val parsed = InputParsers.odometerKm(current.startOdometerInput, "계기판 주행거리")
         val nameError = if (current.nameInput.trim().codePointCount(0, current.nameInput.trim().length) >
             CostLimits.TRIP_NAME_MAX_LENGTH
         ) {
@@ -131,28 +125,33 @@ class HomeViewModel(
         } else {
             null
         }
-        if (parsed !is ParsedNumber.Ok || nameError != null) {
+        if (nameError != null) {
             _state.update {
-                it.copy(startOdometerError = (parsed as? ParsedNumber.Invalid)?.message, nameError = nameError)
+                it.copy(nameError = nameError)
             }
             startGuard.release()
             return
         }
-        _state.update { it.copy(isStarting = true, startError = null, startOdometerError = null, nameError = null) }
+        _state.update { it.copy(isStarting = true, startError = null, nameError = null) }
         viewModelScope.launch {
             try {
-                // 주행거리는 사용자가 직접 입력한 값이므로 출처를 MANUAL로 저장한다. 인원·운전자 포함은 정산 단계에서 정한다.
+                val result = kotlinx.coroutines.withTimeoutOrNull(10_000) { vehicle?.readSnapshot() }
+                val snapshot = (result as? com.gatita.domain.vehicle.VehicleReadResult.Success)?.snapshot
+                if (snapshot == null || snapshot.source != VehicleSource.PLEOS) {
+                    _state.update { it.copy(startError="차량 연결을 기다리고 있어요. 차량 데이터를 받은 뒤 여행을 시작할 수 있어요.") }
+                    return@launch
+                }
                 val command = StartTripCommand(
-                    startOdometerKm = parsed.value,
+                    startOdometerKm = snapshot.odometerKm,
                     startedAtMillis = clock.millis(),
-                    source = VehicleSource.MANUAL,
+                    source = snapshot.source,
                     name = current.nameInput,
                     people = current.people,
                     includeDriver = current.includeDriver,
                 )
                 when (val result = startTripUseCase(command)) {
                     is DomainResult.Success -> {
-                        _state.update { it.copy(startOdometerInput = "", nameInput = "") }
+                        _state.update { it.copy(nameInput = "") }
                         _events.send(HomeEvent.OpenTrip(result.value.id))
                     }
 
@@ -191,6 +190,7 @@ class HomeViewModel(
                     startTripUseCase = container.startTrip,
                     clock = container.clock,
                     settings = container.settingsRepository,
+                    vehicle = container.vehicleDataSource,
                 )
             }
         }

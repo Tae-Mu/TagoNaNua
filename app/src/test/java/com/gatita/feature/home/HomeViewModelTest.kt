@@ -26,6 +26,11 @@ class HomeViewModelTest {
         restoreActiveTrip = fixture.restoreActiveTrip,
         startTripUseCase = fixture.startTrip,
         clock = fixture.clock,
+        vehicle = object: com.gatita.domain.vehicle.VehicleDataSource {
+            override val source=VehicleSource.PLEOS
+            override suspend fun readSnapshot() = com.gatita.domain.vehicle.VehicleReadResult.Success(
+                com.gatita.domain.vehicle.VehicleSnapshot(java.math.BigDecimal("12000.5"),null,fixture.clock.millis(),source))
+        },
     )
 
     @Test
@@ -60,33 +65,40 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `start trip stores a MANUAL trip and opens it`() = runTest {
+    fun `start trip stores SDK odometer without user distance input`() = runTest {
         val fixture = Fixture()
         val vm = viewModel(fixture)
 
-        vm.onStartOdometerChange("12,000.5")
         vm.startTrip()
         advanceUntilIdle()
 
         val trip = fixture.store.trips.values.single()
-        assertEquals(VehicleSource.MANUAL, trip.source)
+        assertEquals(VehicleSource.PLEOS, trip.source)
         assertEquals(TripStatus.IN_PROGRESS, trip.status)
         assertEquals(0, trip.startOdometerKm.compareTo(java.math.BigDecimal("12000.5")))
         assertEquals(HomeEvent.OpenTrip(trip.id), vm.events.first())
     }
 
     @Test
-    fun `invalid start odometer is rejected and the text is preserved`() = runTest {
-        val fixture = Fixture()
-        val vm = viewModel(fixture)
-
-        vm.onStartOdometerChange("-5")
+    fun `SDK unavailable does not create a zero distance trip`() = runTest {
+        val fixture=Fixture()
+        val vm=HomeViewModel(fixture.restoreActiveTrip,fixture.observeList,fixture.startTrip,fixture.clock)
+        vm.onNameChange("주말 여행")
         vm.startTrip()
         advanceUntilIdle()
+        assertNotNull(vm.state.value.startError)
+        assertEquals("주말 여행",vm.state.value.nameInput)
+        assertEquals(0,fixture.store.trips.size)
+        assertFalse(vm.state.value.isStarting)
+    }
 
-        assertNotNull(vm.state.value.startOdometerError)
-        assertEquals("-5", vm.state.value.startOdometerInput)
-        assertEquals(0, fixture.store.trips.size)
+    @Test
+    fun `sample snapshot cannot be used as real SDK data`() = runTest {
+        val f=Fixture()
+        val vm=HomeViewModel(f.restoreActiveTrip,f.observeList,f.startTrip,f.clock,vehicle=com.gatita.data.vehicle.SampleVehicleDataSource(f.clock))
+        vm.startTrip();advanceUntilIdle()
+        assertNotNull(vm.state.value.startError)
+        assertTrue(f.store.trips.isEmpty())
     }
 
     @Test
@@ -95,13 +107,11 @@ class HomeViewModelTest {
         fixture.seedActiveTrip()
         val vm = viewModel(fixture)
 
-        vm.onStartOdometerChange("100")
         vm.startTrip()
         advanceUntilIdle()
 
         assertEquals(1, fixture.store.trips.size)
         assertNotNull(vm.state.value.startError)
-        assertEquals("100", vm.state.value.startOdometerInput)
         assertFalse(vm.state.value.isStarting)
     }
     @Test

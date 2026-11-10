@@ -17,7 +17,7 @@ enum class VehicleReadFailure { UNAVAILABLE, TIMEOUT, PERMISSION_DENIED, UNSUPPO
 sealed interface VehicleReadResult {
     data class Success(val snapshot: VehicleSnapshot) : VehicleReadResult
 
-    /** 조회 실패. 호출자는 이 결과를 0 값 기록으로 바꾸지 말고 수동 입력이나 측정 실패 구간으로 처리한다. */
+    /** 조회 실패. 호출자는 이 결과를 0 값 기록으로 바꾸지 말고 연결 대기/실패 상태로 처리한다. 사용자 거리 입력으로 대체하지 않는다. */
     data class Failure(val reason: VehicleReadFailure, val message: String? = null) : VehicleReadResult
 }
 

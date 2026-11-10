@@ -1,11 +1,13 @@
-# 같이타 문서 보관함
+# TAGO 문서 보관함
 
-이 폴더는 같이타 프로젝트의 옵시디언 보관함입니다. Obsidian에서 이 폴더를 보관함으로 열어 사용합니다. Codex도 같은 Markdown 파일을 직접 읽습니다. 별도 MCP나 동기화 서버는 필요하지 않습니다.
+이 폴더는 TAGO 프로젝트의 옵시디언 보관함입니다. Obsidian에서 이 폴더를 보관함으로 열어 사용합니다. Codex도 같은 Markdown 파일을 직접 읽습니다. 별도 MCP나 동기화 서버는 필요하지 않습니다.
 
 - [기획](planning.md)
 - [아키텍처](architecture.md)
 - [DB 설계](database.md)
-- [HTML 기준 API·함수·테이블 명세](html-api-spec.md) — 결제액 방식 명세(핵심 흐름 부분 구현, 일부 제안 미구현)
+- [화면·퍼블리싱 명세](publishing.md) — 실제 앱 화면별 버튼·동작·디자인 시스템·모션 (2026-11-10)
+- [HTML 기준 API·함수·테이블 명세](html-api-spec.md) — 실제 구현 매핑 및 설계 제안 구분
+- [HTML → 앱 UI 재정렬 검수](ui-parity-2026-11-10.md) — 태블릿 비교·검증 결과
 - [테스트 전략](testing.md)
 - [퍼블리싱 전반 QA·개선 백로그 (2026-11-09)](publishing-audit-backlog-2026-11-09.md) — 20개 개선 항목과 우선순위
 - [보안 10대 규칙](security.md)

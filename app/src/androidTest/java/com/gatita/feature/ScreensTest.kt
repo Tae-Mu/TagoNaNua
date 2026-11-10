@@ -11,15 +11,16 @@ import org.junit.Test
 
 class ScreensTest {
     @get:Rule val rule=createComposeRule()
-    private fun home(state:HomeUiState) {rule.setContent {TagoTheme {HomeContent(state,{},{},{},{},{},{},{})}}}
-    @Test fun homeEmptyStateOffersPrepareAndManualSource() {
+    private fun home(state:HomeUiState) {rule.setContent {TagoTheme {HomeContent(state,{},{},{},{},{},{})}}}
+    @Test fun homeOffersPrepareWithoutManualDistance() {
         home(HomeUiState(isLoading=false))
-        rule.onNodeWithText("수동 기록").assertExists()
+        rule.onNodeWithText("차량 연결 대기").assertExists()
         rule.onNodeWithText("새 여행 준비").assertExists().performClick()
         rule.onNodeWithText("여행 기록 시작").assertExists()
+        rule.onNodeWithText("출발 계기판 주행거리 (km)").assertDoesNotExist()
     }
     @Test fun homeStartingDisablesDuplicateSubmit() {
-        home(HomeUiState(isLoading=false,isStarting=true,startOdometerInput="12000"))
+        home(HomeUiState(isLoading=false,isStarting=true))
         rule.onNodeWithText("새 여행 준비").performClick()
         rule.onNodeWithText("처리 중…").assertIsNotEnabled()
     }

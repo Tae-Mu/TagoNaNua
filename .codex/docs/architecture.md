@@ -72,3 +72,8 @@ SettingsViewModel → SaveSettingsUseCase → SettingsRepository → Room으로 
 TripViewModel → SetTripPausedUseCase → TripSessionRepository로 수동 일시정지/재개를 저장한다. HistoryViewModel → HideTripUseCase는 완료 여행을 목록에서 숨기며 확정 불변 트리거를 우회하지 않는다. 숨김은 UI 확인을 거친다. 실제 영구 삭제 기능과 구별한다.
 
 비용 수정에 로드한 revision을 연결하고 충돌 시 입력을 보존한다. 성공한 비용 폼은 화면 이동 전에 재탭해도 두 번째 저장을 실행하지 않는다.
+
+
+## 차량 입력 경로 보정 (2026-11-10)
+
+거리·연비 수동 UI를 제거했다. HomeViewModel에 VehicleDataSource를 주입하고 readSnapshot의 PLEOS 성공값을 StartTripCommand로 전달한다. SDK 미연결·조회 실패·응답 시간 초과 시 여행 생성 없이 오류 안내한다. AppContainer는 샘플 대신 UnavailableVehicleDataSource를 사용하며 실제 Pleos 구현을 가장하지 않는다. SDK 이벤트 자동 구간 저장은 후속 구현이다. 기존 데이터/스키마/정산 규칙은 변경하지 않았다.

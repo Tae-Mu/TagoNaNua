@@ -25,7 +25,7 @@ fun HomeRoute(viewModel:HomeViewModel,onOpenTrip:(Long)->Unit,onOpenSettlement:(
     var startedName by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(viewModel) {viewModel.events.collect {event-> if(event is HomeEvent.OpenTrip) startedId=event.tripId }}
     Box(Modifier.fillMaxSize()) {
-        HomeContent(state,viewModel::onNameChange,viewModel::onStartOdometerChange,
+        HomeContent(state,viewModel::onNameChange,
             {startedName=state.nameInput.ifBlank{"새로운 여행"};viewModel.startTrip()},viewModel::observe,
             onOpenTrip,onOpenSettlement,onOpenHistory,viewModel::onPeopleChange,viewModel::onIncludeDriverChange,onOpenSettlements)
         startedId?.let { id-> DepartureScreen(startedName,onReveal={},onFinished={startedId=null;onOpenTrip(id)}) }
@@ -33,11 +33,11 @@ fun HomeRoute(viewModel:HomeViewModel,onOpenTrip:(Long)->Unit,onOpenSettlement:(
 }
 
 @Composable
-fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,onStartOdometerChange:(String)->Unit,
+fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,
     onStartTrip:()->Unit,onRetryLoad:()->Unit,onOpenTrip:(Long)->Unit,onOpenSettlement:(Long)->Unit,onOpenHistory:()->Unit,
     onPeopleChange:(Int)->Unit={},onIncludeDriverChange:(Boolean)->Unit={},onOpenSettlements:()->Unit=onOpenHistory) {
     var prepare by rememberSaveable { mutableStateOf(false) }
-    GatitaScaffold(if(prepare)"출발 준비" else "오늘은 어디로 떠나세요?",if(prepare)({prepare=false}) else null, subtitle=if(prepare) "인원을 확인하고, 함께할 여행을 시작해요." else "함께한 여정의 기름값, 타고가 나눠드려요.", statusLabel="수동 기록") {
+    GatitaScaffold(if(prepare)"출발 준비" else "오늘은 어디로 떠나세요?",if(prepare)({prepare=false}) else null, subtitle=if(prepare) "인원을 확인하고, 함께할 여행을 시작해요." else "함께한 여정의 기름값, 타고가 나눠드려요.", statusLabel="차량 연결 대기") {
         when {
             state.isLoading -> LoadingBlock("저장된 여행을 불러오는 중")
             state.loadError!=null -> ErrorBlock(state.loadError,onRetryLoad)
@@ -64,15 +64,14 @@ fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,onStartOdometerCha
                         HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                         StepperRow("함께 타는 인원",state.people,1..8,onPeopleChange,enabled=!state.isStarting)
                         SwitchRow("본인도 정산에 포함",state.includeDriver,onIncludeDriverChange,enabled=!state.isStarting&&state.people>1)
-                        NumberField("출발 계기판 주행거리 (km)",state.startOdometerInput,onStartOdometerChange,
-                            errorText=state.startOdometerError,supporting="계기판의 누적 주행거리를 입력해 주세요.",enabled=!state.isStarting)
+                        Note("이동 거리와 주행 정보는 차량에서 자동으로 받아요.")
                         state.startError?.let{ErrorMessage(it)}
                         ActionButton("여행 기록 시작",onStartTrip,busy=state.isStarting)
                     }
                     Panel(Modifier.weight(1f)) {
                         Image(painterResource(R.drawable.vehicle),"차량 예시 이미지",Modifier.fillMaxWidth().height(190.dp))
                         Text("함께 떠날 준비가 됐나요?",fontSize=22.sp,fontWeight=FontWeight.SemiBold)
-                        Note("차량 연결 전 · 수동 기록")
+                        Note("차량 연결 대기")
                         HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                         Text("비용은 여행 중에도 추가할 수 있어요",fontWeight=FontWeight.SemiBold)
                         Note("주유·주차·톨비를 한곳에 모으고, 도착 후 함께 나눠요.")

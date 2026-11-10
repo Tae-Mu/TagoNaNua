@@ -44,7 +44,7 @@ import com.gatita.core.ui.component.*
                     Note("VEHICLE")
                     Text("연결 차량",style=MaterialTheme.typography.titleLarge)
                     Text("차량 연결 전")
-                    Note("거리와 비용을 직접 입력해요.")
+                    Note("이동 거리는 차량에서 받고, 비용은 직접 입력해요.")
                 }
             }
             state.message?.let { Text(it,color=MaterialTheme.colorScheme.primary) }
@@ -52,7 +52,7 @@ import com.gatita.core.ui.component.*
             Panel(Modifier.fillMaxWidth()) {
                 Text("기록과 연결",style=MaterialTheme.typography.titleLarge)
                 Note("여행과 비용은 이 기기에 저장돼요. 앱 삭제 시 기록도 삭제돼요.")
-                Note("차량 연결: 미연결 · 거리와 비용을 직접 입력해요.")
+                Note("차량 연결: 미연결 · 이동 거리는 차량에서 받고, 비용은 직접 입력해요.")
                 Note("QR은 정산 요약 공유용이에요. 실제 송금과 입금 확인은 별도로 진행해 주세요.")
                 TextButton({confirmReset=true},enabled=!state.saving) {Text("설정 초기화")}
             }
