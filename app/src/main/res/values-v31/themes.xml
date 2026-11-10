@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Gatita" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenBackground">#F7F9FB</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_tago</item>
+    </style>
+</resources>
