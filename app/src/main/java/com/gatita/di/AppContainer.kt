@@ -8,7 +8,7 @@ import com.gatita.data.repository.RoomSettlementRepository
 import com.gatita.data.repository.RoomTransactionRunner
 import com.gatita.data.repository.RoomTripLedgerRepository
 import com.gatita.data.repository.RoomTripRepository
-import com.gatita.data.vehicle.UnavailableVehicleDataSource
+import com.gatita.data.vehicle.PleosVehicleDataSource
 import com.gatita.domain.calculator.SettlementCalculator
 import com.gatita.domain.repository.CostRepository
 import com.gatita.domain.repository.PaymentSettlementRepository
@@ -43,7 +43,7 @@ import java.time.ZoneId
 /**
  * 수동 의존성 연결. UI 작업은 이 컨테이너의 유스케이스를 ViewModel에 주입한다.
  *
- * [vehicleDataSource]는 SDK 연결 전 명시적 실패를 반환한다. 검증된 Pleos 어댑터로 교체해야 한다.
+ * [vehicleDataSource]는 Pleos Vehicle SDK로 주행거리를 읽는다. 실패하면 명시적 실패를 반환한다.
  * 앱은 차량 데이터 조회 성공 전 여행을 만들지 않는다. 샘플 구현을 제품 시작 경로에 연결하지 않는다.
  *
  * 결제액 방식(payments-v1)이 정산의 기준이다. "legacy" 표시가 있는 항목은 v1 추정 정산용이며
@@ -74,7 +74,7 @@ class AppContainer(
     val hideTrip = com.gatita.domain.usecase.HideTripUseCase(tripRepository,tripSessionRepository,transactions)
     val setTripPaused = com.gatita.domain.usecase.SetTripPausedUseCase(tripRepository,tripSessionRepository,transactions,clock)
 
-    val vehicleDataSource: VehicleDataSource = UnavailableVehicleDataSource()
+    val vehicleDataSource: VehicleDataSource = PleosVehicleDataSource(context.applicationContext, clock)
 
     // ---- 여행·구간(기록). 기록 메타데이터이며 정산 금액과 무관하다. ----
     /** 이름·인원·운전자 포함 여부를 함께 받는다(StartTripCommand의 선택 필드). */

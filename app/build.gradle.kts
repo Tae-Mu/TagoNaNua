@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.zxing.core)
+    implementation(libs.pleos.vehicle)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

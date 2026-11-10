@@ -29,7 +29,7 @@
 
 ## 빌드 및 검증
 
-조건: JDK 17, Android SDK(platform 35). Gradle은 저장소의 Wrapper(`./gradlew`, Gradle 8.9)를 사용합니다. 라이브러리 버전은 `gradle/libs.versions.toml`에서 관리합니다.
+조건: JDK 17, Android SDK(platform 35). Gradle은 저장소의 Wrapper(`./gradlew`, Gradle 8.9)를 사용합니다. 라이브러리 버전은 `gradle/libs.versions.toml`에서 관리합니다. 처음 설치하는 경우 [설치 및 실행 가이드](docs/SETUP.md)(Pleos 에뮬레이터 포함)를 따르세요.
 
 ```bash
 ./gradlew :app:assembleDebug              # debug 빌드 (새 구현에서 실행·성공)
