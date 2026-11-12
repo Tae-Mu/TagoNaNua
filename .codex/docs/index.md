@@ -8,6 +8,7 @@
 - [화면·퍼블리싱 명세](publishing.md) — 실제 앱 화면별 버튼·동작·디자인 시스템·모션 (2026-11-10)
 - [HTML 기준 API·함수·테이블 명세](html-api-spec.md) — 실제 구현 매핑 및 설계 제안 구분
 - [HTML → 앱 UI 재정렬 검수](ui-parity-2026-11-10.md) — 태블릿 비교·검증 결과
+- [Pleos SDK 조사 — 연비·시동 신호](vehicle-sdk-findings-2026-11-10.md) — API 목록·에뮬레이터 결과·미확인 항목·결정 필요 사항 (2026-11-10)
 - [테스트 전략](testing.md)
 - [퍼블리싱 전반 QA·개선 백로그 (2026-11-09)](publishing-audit-backlog-2026-11-09.md) — 20개 개선 항목과 우선순위
 - [보안 10대 규칙](security.md)
