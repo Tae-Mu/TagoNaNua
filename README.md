@@ -4,7 +4,7 @@
 
 ## 현재 상태
 
-결제액 방식(`payments-v1`)의 핵심 흐름과, 새 여행에 쓰는 구간별 유류비 방식(`fuel-segments-v2`)의 계산기·차량 값 수집(Pleos 폴링)·Room v5 저장·화면(주유 이벤트 "주유 아님", FUEL 비용 "감지 안 됨", 종료 조건, 구간별 근거, 직접 입력 단가)이 작성되어 있습니다. 코드는 모두 작성되어 있으나 Gradle·Android SDK가 없는 환경에서 작성해 `:app` 빌드·Room KSP·Compose·androidTest는 컴파일·실행하지 않았다. 도메인 계산·구간 구성·유스케이스(순수 Kotlin)만 JVM에서 단위 테스트로 검증했다. 실제 차량 값(연료 %·연비·기어)과 시동 사이클 중 기록 유지, 실기기 마이그레이션은 검증하지 않았다.
+결제액 방식(`payments-v1`)의 핵심 흐름과, 새 여행에 쓰는 구간별 유류비 방식(`fuel-segments-v2`)의 계산기·차량 값 수집(Pleos 폴링)·Room v5 저장·화면(주유 이벤트 "주유 아님", FUEL 비용 "감지 안 됨", 종료 조건, 구간별 근거, 직접 입력 단가)이 작성되어 있습니다. 2026-11-12에 `:app:assembleDebug`(첫 빌드의 컴파일 오류 3건 수정 후 성공), `:app:testDebugUnitTest`(158건 통과), `:app:lintDebug`(통과), `:app:connectedDebugAndroidTest`(Pleos 에뮬레이터 `Pleos_Connect_v2.1`, 49건 통과)를 실제로 실행했다. 기기 테스트에는 Room 마이그레이션, 구간별 유류비 저장·확정 롤백·불변 트리거, 새 화면의 문구·상태 렌더링이 포함된다. 에뮬레이터 결과이며 실제 차량 값(연료 %·연비·기어), 시동 사이클 중 기록 유지, 실기기 마이그레이션, 화면의 시각 확인(스크린샷 검토)은 검증하지 않았다.
 
 - 비용 등록·수정·삭제와 정산 포함/제외 선택(FUEL/PARKING/TOLL/OTHER)
 - 운전자 포함/제외, 인원 1~8명, 나머지를 순서대로 1원씩 배분하는 정수 원 분담
@@ -39,7 +39,7 @@
 ./gradlew :app:connectedDebugAndroidTest  # Room·마이그레이션·화면 테스트, 에뮬레이터/기기 필요 (최신 결과는 검수 문서 참고)
 ```
 
-- Room 스키마 이력 `app/schemas/com.gatita.data.local.AppDatabase/1.json`~`4.json`은 `MigrationTest`가 사용하므로 버전 관리 대상입니다.
+- Room 스키마 이력 `app/schemas/com.gatita.data.local.AppDatabase/1.json`~`5.json`은 `MigrationTest`가 사용하므로 버전 관리 대상입니다.
 - DB 버전을 올릴 때는 `data/local/migration/Migrations.kt`에 마이그레이션을 추가합니다. 파괴적 fallback은 사용하지 않습니다.
 - `minSdk`(29)와 패키지명(`com.gatita`)은 임시값입니다.
 

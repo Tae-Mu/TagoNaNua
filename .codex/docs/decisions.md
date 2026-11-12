@@ -2,7 +2,7 @@
 
 ## 2026-11-12 — 구간별 유류비 방식으로 정산 규칙 변경 (구현됨, 일부 미검증)
 
-- 상태: 사용자 확정(2026-11-12). 도메인 계산기(`FuelSettlementCalculator`)와 JVM 단위 테스트는 구현·통과했고 AGENTS.md·README·planning·architecture·database·testing에 반영했다. 저장(Room v5)·차량 수집·화면·확정 스냅샷도 작성했으나 `:app` 컴파일·Room 마이그레이션·Compose·실차 동작은 검증하지 않았다(Gradle/Android SDK 없음, 실차 없음). 새 여행만 `fuel-segments-v2`이며 기존은 `payments-v1`이다. 아래 "미확정"은 구현하면서 정한다.
+- 상태: 사용자 확정(2026-11-12). 도메인 계산기(`FuelSettlementCalculator`)와 JVM 단위 테스트는 구현·통과했고 AGENTS.md·README·planning·architecture·database·testing에 반영했다. 저장(Room v5)·차량 수집·화면·확정 스냅샷도 구현했고, 2026-11-12에 `:app` 빌드·단위 테스트 158건·Lint·에뮬레이터 기기 테스트 49건(저장·확정 롤백·불변 트리거·화면 렌더링 포함)을 통과했다. 실차 동작은 검증하지 않았다(실차 없음). 새 여행만 `fuel-segments-v2`이며 기존은 `payments-v1`이다. 아래 "미확정"은 구현하면서 정한다.
 - 배경: 사용자가 2026-11-09 결정("정산 총액 = 입력한 결제 금액의 합")이 의도와 다르다고 밝혔다. 의도한 앱은 구간별 유류비를 계산하고 주유비 외 입력 금액을 더해 인원수로 나눈다.
 - 결정(사용자 확정):
   - 총액 = Σ(구간별 유류비) + 기타 비용(PARKING/TOLL/OTHER 입력 금액). 분담은 총액 ÷ 인원(정수 원, 나머지 1원씩 순서 배분은 기존 규칙 유지).

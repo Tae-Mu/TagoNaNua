@@ -7,7 +7,7 @@
 - app 단일 모듈로 시작한다. com.gatita는 임시 패키지명이다.
 - Room이 유일한 DB다. 초기 범위에 서버, MySQL, 로그인, 결제, 클라우드 동기화를 추가하지 않는다.
 - 첫 QR 공유는 정산 요약 텍스트다. 실제 송금이나 입금 확인 기능으로 표현하지 않는다.
-- 정산 규칙은 구간별 유류비 방식(`fuel-segments-v2`)으로 바뀌었다(2026-11-12 결정, [decisions.md](.codex/docs/decisions.md)). 총액 = Σ(주유 구간 사용량×입력 단가) + 기타 비용(PARKING/TOLL/OTHER). 새 여행은 `fuel-segments-v2`로 시작하고 기존 여행·확정 정산은 `payments-v1`로 남는다. 계산기·구간 구성·유스케이스는 JVM 단위 테스트로 검증했으나, Room v5(마이그레이션·`5.json`)·Pleos 수집·Compose 화면은 Gradle/Android SDK 없이 작성해 컴파일·실행하지 않았고 실차 검증도 없다.
+- 정산 규칙은 구간별 유류비 방식(`fuel-segments-v2`)으로 바뀌었다(2026-11-12 결정, [decisions.md](.codex/docs/decisions.md)). 총액 = Σ(주유 구간 사용량×입력 단가) + 기타 비용(PARKING/TOLL/OTHER). 새 여행은 `fuel-segments-v2`로 시작하고 기존 여행·확정 정산은 `payments-v1`로 남는다. 2026-11-12에 `assembleDebug`·단위 테스트(158건)·Lint·에뮬레이터 `connectedDebugAndroidTest`(49건: Room 마이그레이션·v2 저장·확정 롤백·불변 트리거·화면 렌더링)를 실행해 통과했다. 실차 검증은 없고, Pleos 수집은 에뮬레이터에서 실제 차량 값으로 확인하지 않았다.
 - Gradle·Android 설정과 앱 코드가 있다. 빌드·테스트 성공은 실제로 실행한 명령만 보고하고, 이전 구현의 결과를 현재 결과로 보고하지 않는다.
 
 ## 문서 관리 — 옵시디언
