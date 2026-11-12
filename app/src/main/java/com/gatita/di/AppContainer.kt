@@ -99,7 +99,7 @@ class AppContainer(
     // ---- 구간별 유류비(fuel-segments-v2): 차량 측정 기록과 사용자 보정 ----
     val recordFuelSnapshot =
         RecordFuelSnapshotUseCase(vehicleDataSource, tripRepository, fuelTrackingRepository, transactions, clock)
-    val fuelRecordingLoop = FuelRecordingLoop(tripRepository.observeActiveTrip(), recordFuelSnapshot)
+    val fuelRecordingLoop = FuelRecordingLoop(tripRepository.observeActiveTrip(), recordFuelSnapshot, vehicleDataSource.parkedEvents())
     val takeEndSnapshot = TakeEndSnapshotUseCase(recordFuelSnapshot, fuelTrackingRepository)
     val observeFuelProgress = ObserveFuelProgressUseCase(fuelTrackingRepository)
     val observeRefuels = ObserveRefuelsUseCase(fuelTrackingRepository)

@@ -3,12 +3,15 @@ package com.gatita.data.vehicle
 import android.content.Context
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
+import ai.pleos.playground.vehicle.listener.GearSelectionListener
 import com.gatita.domain.model.EfficiencyUnit
 import com.gatita.domain.model.VehicleSource
 import com.gatita.domain.vehicle.VehicleDataSource
 import com.gatita.domain.vehicle.VehicleReadFailure
 import com.gatita.domain.vehicle.VehicleReadResult
 import com.gatita.domain.vehicle.VehicleSnapshot
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -116,6 +119,23 @@ class PleosVehicleDataSource(
             }
         }
     } ?: Outcome.Timeout
+
+    /**
+     * 기어 선택 리스너로 P단 진입을 알린다(숨김·deprecated API). 등록에 실패하면 흐름이 오류로 끝나며,
+     * 호출자는 주기 기록만으로 계속한다. 수집이 끝나면 리스너를 해제한다.
+     */
+    @Suppress("DEPRECATION")
+    override fun parkedEvents(): Flow<Boolean> = callbackFlow {
+        val sdk = obtainVehicle() ?: run { close(); return@callbackFlow }
+        val gear = sdk.getGear()
+        val listener = object : GearSelectionListener {
+            override fun onSelected(gear: VehicleGear?) {
+                if (gear == VehicleGear.GEAR_PARK) trySend(true)
+            }
+        }
+        gear.registerGearSelection(listener)
+        awaitClose { try { gear.unregisterGearSelection(listener) } catch (e: Exception) { } }
+    }
 
     /** SDK 사용이 끝났을 때 호출한다(공식 가이드: 콜백 처리가 끝난 뒤 release). */
     suspend fun release() = initLock.withLock {

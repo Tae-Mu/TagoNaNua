@@ -2,6 +2,8 @@ package com.gatita.domain.vehicle
 
 import com.gatita.domain.model.EfficiencyReading
 import com.gatita.domain.model.VehicleSource
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import java.math.BigDecimal
 
 /** 한 시점의 차량 측정값. [efficiency]가 null이면 연비를 얻지 못한 것이며 0이 아니다. */
@@ -31,4 +33,7 @@ interface VehicleDataSource {
     val source: VehicleSource
 
     suspend fun readSnapshot(): VehicleReadResult
+
+    /** 기어가 P단으로 바뀐 순간마다 true를 내보낸다. 지원하지 않거나 기어 신호를 못 받으면 아무것도 내보내지 않는다. */
+    fun parkedEvents(): Flow<Boolean> = emptyFlow()
 }

@@ -20,7 +20,10 @@ import com.gatita.domain.vehicle.VehicleDataSource
 import com.gatita.domain.vehicle.VehicleReadResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import java.math.BigDecimal
@@ -68,7 +71,7 @@ class RecordFuelSnapshotUseCase(
                 odometerKm = reading.odometerKm,
                 fuelPercent = reading.fuelPercent,
                 efficiency = reading.efficiency,
-                parked = reading.parked,
+                parked = if (forceKind == FuelSnapshotKind.PARKED) true else reading.parked,
                 source = reading.source,
             )
             val kind = if (draft.kind == FuelSnapshotKind.PERIODIC &&
@@ -198,11 +201,33 @@ class ObserveFuelProgressUseCase(private val fuel: FuelTrackingRepository) {
 class FuelRecordingLoop(
     private val activeTrip: Flow<Trip?>,
     private val record: RecordFuelSnapshotUseCase,
+    private val parkedEvents: Flow<Boolean> = emptyFlow(),
     private val intervalMillis: Long = DEFAULT_INTERVAL_MILLIS,
 ) {
     suspend fun run() {
         activeTrip.collectLatest { trip ->
             if (trip == null || trip.calculationVersion != FUEL_SEGMENTS_CALCULATION_VERSION) return@collectLatest
+            coroutineScope {
+                // P단으로 바뀐 순간에 한 번 저장한다. 기어 신호가 없으면 이 수집은 아무 일도 하지 않는다.
+                launch {
+                    try {
+                        parkedEvents.collect { parked ->
+                            if (parked) {
+                                try {
+                                    record(trip.id, FuelSnapshotKind.PARKED)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    // 이번 저장만 건너뛴다.
+                                }
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // 신호 수신 실패. 주기 기록은 계속된다.
+                    }
+                }
             while (true) {
                 try {
                     record(trip.id)
@@ -212,6 +237,7 @@ class FuelRecordingLoop(
                     // 이번 주기 기록만 건너뛴다.
                 }
                 delay(intervalMillis)
+            }
             }
         }
     }

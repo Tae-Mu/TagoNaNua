@@ -145,6 +145,15 @@ class FuelTrackingUseCasesTest {
         assertNotNull(fuel.snapshots.value.firstOrNull())
     }
 
+    @Test fun `parked event stores a PARKED snapshot even when gear read fails`() = runTest {
+        val trip = start()
+        at(1_000, "1000", 50, tripId = trip.id)
+        clockMillis[0] = 30_000; vehicle.set("1005", 50, null)
+        val saved = record(trip.id, FuelSnapshotKind.PARKED)
+        assertEquals(FuelSnapshotKind.PARKED, saved?.kind)
+        assertEquals(true, saved?.parked)
+    }
+
     @Test fun `manual price must be positive`() = runTest {
         val trip = start()
         val set = SetManualFuelUnitPriceUseCase(trips, fuel, tx, clock)
