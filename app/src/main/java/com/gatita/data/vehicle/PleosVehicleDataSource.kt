@@ -10,6 +10,7 @@ import com.gatita.domain.vehicle.VehicleDataSource
 import com.gatita.domain.vehicle.VehicleReadFailure
 import com.gatita.domain.vehicle.VehicleReadResult
 import com.gatita.domain.vehicle.VehicleSnapshot
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -131,6 +132,10 @@ class PleosVehicleDataSource(
         val listener = object : GearSelectionListener {
             override fun onSelected(gear: VehicleGear?) {
                 if (gear == VehicleGear.GEAR_PARK) trySend(true)
+            }
+
+            override fun onFailed(e: Exception) {
+                close(e)
             }
         }
         gear.registerGearSelection(listener)

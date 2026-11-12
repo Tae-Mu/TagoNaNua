@@ -31,6 +31,7 @@ import com.gatita.core.ui.component.LabeledValue
 import com.gatita.core.ui.component.LoadingBlock
 import com.gatita.core.ui.component.SectionTitle
 import com.gatita.core.ui.component.SourceLabel
+import com.gatita.feature.common.Formatters
 import com.gatita.feature.settlement.LegacySettlementCard
 
 @Composable
