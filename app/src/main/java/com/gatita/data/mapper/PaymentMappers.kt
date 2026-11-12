@@ -3,12 +3,16 @@ package com.gatita.data.mapper
 import com.gatita.data.local.entity.CostEntity
 import com.gatita.data.local.entity.PaymentSettlementCostEntity
 import com.gatita.data.local.entity.PaymentSettlementEntity
+import com.gatita.data.local.entity.PaymentSettlementFuelIntervalEntity
 import com.gatita.data.local.entity.PaymentSettlementShareEntity
 import com.gatita.data.local.entity.TripSummaryRow
 import com.gatita.data.local.entity.TripWithCostsRelation
 import com.gatita.domain.model.Cost
 import com.gatita.domain.model.CostKind
 import com.gatita.domain.model.Decimals
+import com.gatita.domain.model.ErrorCode
+import com.gatita.domain.model.FuelExclusion
+import com.gatita.domain.model.FuelIntervalResult
 import com.gatita.domain.model.MeasurementQuality
 import com.gatita.domain.model.PaymentSettlement
 import com.gatita.domain.model.PaymentSettlementCost
@@ -41,6 +45,7 @@ fun Cost.toEntity(): CostEntity = CostEntity(
     included = included,
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
+    undetected = undetected,
 )
 
 fun CostEntity.toDomain(): Cost = Cost(
@@ -55,6 +60,7 @@ fun CostEntity.toDomain(): Cost = Cost(
     included = included,
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
+    undetected = undetected,
 )
 
 fun TripWithCostsRelation.toDomain(): TripWithCosts = TripWithCosts(
@@ -126,6 +132,7 @@ fun PaymentSettlementShareEntity.toDomain(): PaymentShare = PaymentShare(
 fun PaymentSettlementEntity.toDomain(
     costs: List<PaymentSettlementCostEntity>,
     shares: List<PaymentSettlementShareEntity>,
+    fuelIntervals: List<PaymentSettlementFuelIntervalEntity> = emptyList(),
 ): PaymentSettlement = PaymentSettlement(
     id = id,
     tripId = tripId,
@@ -149,6 +156,7 @@ fun PaymentSettlementEntity.toDomain(
     confirmedAtMillis = confirmedAtMillis,
     costs = costs.map { it.toDomain() },
     shares = shares.map { it.toDomain() },
+    fuelIntervals = fuelIntervals.map { it.toDomain() },
 )
 
 // ---- 내역 ----
@@ -183,3 +191,27 @@ fun TripSummaryRow.toDomain(): TripSummary {
         settlement = settlement,
     )
 }
+
+// ---- 구간별 유류비 계산 결과 ----
+
+fun FuelIntervalResult.toEntity(settlementId: Long): PaymentSettlementFuelIntervalEntity =
+    PaymentSettlementFuelIntervalEntity(
+        settlementId = settlementId,
+        ordinal = ordinal,
+        distanceKm = distanceKm.text(),
+        usage = usage?.text(),
+        unitPrice = unitPriceWonPerLiter?.text(),
+        costExact = costWonExact?.toPlainString(),
+        exclusion = exclusion?.name,
+        exclusionDetail = exclusionDetail?.name,
+    )
+
+fun PaymentSettlementFuelIntervalEntity.toDomain(): FuelIntervalResult = FuelIntervalResult(
+    ordinal = ordinal,
+    distanceKm = distanceKm.decimal(),
+    usage = usage?.decimal(),
+    unitPriceWonPerLiter = unitPrice?.decimal(),
+    costWonExact = costExact?.let(::BigDecimal),
+    exclusion = exclusion?.let(FuelExclusion::valueOf),
+    exclusionDetail = exclusionDetail?.let(ErrorCode::valueOf),
+)

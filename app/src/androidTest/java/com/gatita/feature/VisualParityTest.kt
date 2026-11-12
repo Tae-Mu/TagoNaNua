@@ -39,7 +39,7 @@ class VisualParityTest {
         val view=PaymentResultView("함께한 주말 여행","2026-11-02","60,000원","60,000원","0원","3명",
             listOf(ShareLine("나","20,000원"),ShareLine("참여자 2","20,000원"),ShareLine("참여자 3","20,000원")),
             listOf(CostLine("주유 · 샘플 주유소","60,000원",listOf("2026. 11. 2 · 1,890원/L"),true)),
-            "82 km","측정됨","샘플","payments-v1",perPerson="20,000원",splitPeople=3)
+            distance="82 km",quality="측정됨",source="샘플",calculationVersion="payments-v1",perPerson="20,000원",splitPeople=3)
         rule.setContent { com.gatita.core.ui.component.VehicleViewport { TagoTheme { ConnectedShell("settlements",{}) { ResultContent(ResultUiState(isLoading=false,content=ResultContentState.Payments(view,"테스트 요약",QrState.None)),{},{},{}) } } } }
         rule.onNodeWithText("함께 나눌 총금액").assertExists()
         rule.onNodeWithText("20,000 원 / 인").assertExists()

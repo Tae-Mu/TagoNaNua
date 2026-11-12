@@ -32,6 +32,7 @@ import com.gatita.core.ui.component.LabeledValue
 import com.gatita.core.ui.component.LoadingBlock
 import com.gatita.core.ui.component.SectionTitle
 import com.gatita.core.ui.component.SourceLabel
+import com.gatita.feature.common.Formatters
 import com.gatita.feature.settlement.LegacySettlementCard
 
 @Composable
@@ -122,7 +123,12 @@ private fun PaymentsResult(content: ResultContentState.Payments) {
                 if(index>0) androidx.compose.material3.HorizontalDivider()
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(cost.title,Modifier.weight(1f));Text(cost.amount)}
                 cost.details.forEach{Note(it)}
-                Note(if(cost.included)"정산 포함" else "정산 제외")
+                Note(if(view.fuelSegments&&cost.title.startsWith(Formatters.costKind(com.gatita.domain.model.CostKind.FUEL)))"단가 산정용 · 금액은 합계에 직접 더하지 않아요" else if(cost.included)"정산 포함" else "정산 제외")
+            }
+            if(view.fuelIntervalLines.isNotEmpty()) {
+                androidx.compose.material3.HorizontalDivider()
+                Text("구간별 유류비 계산",fontSize=15.sp)
+                view.fuelIntervalLines.forEach{Note(it)}
             }
         }
     }

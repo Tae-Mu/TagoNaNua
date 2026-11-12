@@ -18,6 +18,17 @@ Room을 통해 차량 내부 SQLite에 저장합니다. 현재 스키마 버전�
 
 주유량(L)은 파생값이므로 저장하지 않습니다. 새 `fuel_prices` 입력은 현재 흐름에 없습니다(v1 테이블만 이력으로 남김).
 
+## 구간별 유류비 방식 저장 (Room v5, 작성됨·미컴파일)
+
+`fuel-segments-v2`([decisions.md](decisions.md) 2026-11-12) 저장용 Room v5를 코드로 작성했다(`MIGRATION_4_5`, `FuelTrackingEntities.kt`, `FuelTrackingDao`). KSP 스키마 `app/schemas/5.json`은 빌드 때 생성되며 아직 없다. 마이그레이션은 Gradle/기기에서 실행하지 않았다(`MigrationTest`에 4→5 케이스를 추가했으나 미실행).
+
+- 차량 스냅샷: 여행별 시각·주행거리·"주유 이후" 연비(원본값·단위·집계 키)·연료 %를 저장한다. 앱이 재시작되면 마지막 저장값과 현재 값을 비교해 구간·주유를 복원하고, 복원할 수 없는 구간은 기록 공백으로 표시한다.
+- 주유 이벤트: 감지 시각, 전후 연료 %, "주유 아님" 제외 여부.
+- costs: FUEL 비용의 "감지 안 됨" 표시와 입력 순서(createdAt/id).
+- 확정 정산: 새 `calculationVersion`(`fuel-segments-v2`), 주유 구간별 사용량·단가·제외 사유·합계 스냅샷. 기존 `payments-v1` 확정분은 수정하지 않는다.
+- 구현: `trips.calculationVersion`(기본 `payments-v1`)·`manualFuelUnitPrice`, `costs.undetected`, 새 테이블 `fuel_snapshots`·`refuel_events`(여행 삭제 시 CASCADE)·`payment_settlement_fuel_intervals`(불변 트리거 대상). v2 확정 저장은 포함된 비FUEL 비용 합 = `otherTotalWon`, `fuelTotalWon + otherTotalWon = totalWon`을 검사한다.
+- 마이그레이션은 사용자 데이터를 삭제하지 않는다.
+
 ## 관계 및 일관성
 
 - 여행 1 : 비용 0~N. 비용 외래키는 CASCADE, 정산 관련 외래키는 RESTRICT입니다.

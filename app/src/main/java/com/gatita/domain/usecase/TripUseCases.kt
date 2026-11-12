@@ -7,6 +7,7 @@ import com.gatita.domain.model.EfficiencyMath
 import com.gatita.domain.model.EfficiencyReading
 import com.gatita.domain.model.EfficiencyScope
 import com.gatita.domain.model.ErrorCode
+import com.gatita.domain.model.FUEL_SEGMENTS_CALCULATION_VERSION
 import com.gatita.domain.model.Segment
 import com.gatita.domain.model.Trip
 import com.gatita.domain.model.TripStatus
@@ -41,6 +42,8 @@ data class StartTripCommand(
     val people: Int = 1,
     val includeDriver: Boolean = true,
     val vehicleLabel: String = "",
+    /** 새 여행의 정산 방식. 기본은 구간별 유류비 방식이다. */
+    val calculationVersion: String = FUEL_SEGMENTS_CALCULATION_VERSION,
 )
 
 /**
@@ -94,6 +97,7 @@ class StartTripUseCase(
                             revision = 0,
                             createdAtMillis = command.startedAtMillis,
                             updatedAtMillis = command.startedAtMillis,
+                            calculationVersion = command.calculationVersion,
                         ),
                     ),
                 )

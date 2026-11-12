@@ -22,6 +22,7 @@ object ImmutabilityTriggers {
         "payment_settlements",
         "payment_settlement_costs",
         "payment_settlement_shares",
+        "payment_settlement_fuel_intervals",
     )
 
     private fun trigger(name: String, timing: String, on: String, whenClause: String?, message: String): String =

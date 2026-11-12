@@ -15,6 +15,7 @@ import com.gatita.domain.model.PaymentPreview
 import com.gatita.domain.usecase.ConfirmPaymentCommand
 import com.gatita.domain.usecase.ConfirmPaymentSettlementUseCase
 import com.gatita.domain.usecase.PreviewPaymentSettlementUseCase
+import com.gatita.domain.usecase.SetManualFuelUnitPriceUseCase
 import com.gatita.domain.usecase.UpdateSplitPolicyUseCase
 import com.gatita.feature.common.AttemptStore
 import com.gatita.feature.common.SavedStateAttemptStore
@@ -45,6 +46,11 @@ data class SettlementUiState(
     val nameError: String? = null,
     val shares: List<ShareRow> = emptyList(),
 
+    /** 주유가 없는 여행에서 직접 입력하는 원/L 단가(입력 중인 문자열). 비우면 지운다. */
+    val manualPriceInput: String = "",
+    val manualPriceError: String? = null,
+    val isSavingPrice: Boolean = false,
+
     val isUpdatingPolicy: Boolean = false,
     val policyError: String? = null,
 
@@ -64,6 +70,7 @@ class SettlementViewModel(
     private val confirmPayment: ConfirmPaymentSettlementUseCase,
     private val attempts: AttemptStore,
     private val settings: com.gatita.domain.repository.SettingsRepository? = null,
+    private val setManualUnitPrice: SetManualFuelUnitPriceUseCase? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SettlementUiState())
     val state: StateFlow<SettlementUiState> = _state.asStateFlow()
@@ -153,6 +160,38 @@ class SettlementViewModel(
                 confirmError = null,
                 shares = it.preview?.let { p -> rows(p, text) } ?: it.shares,
             )
+        }
+    }
+
+    // ---- 직접 입력 단가(주유가 없는 구간별 유류비 여행) ----
+
+    fun onManualPriceChange(text: String) = _state.update { it.copy(manualPriceInput = text, manualPriceError = null) }
+
+    /** 입력한 단가를 저장하고 미리보기를 다시 계산한다. 비어 있으면 지운다. 단가가 없어도 정산은 막히지 않는다. */
+    fun saveManualPrice() {
+        val action = setManualUnitPrice ?: return
+        val state = _state.value
+        if (state.isSavingPrice || state.isConfirming) return
+        val text = state.manualPriceInput.trim()
+        val price = if (text.isEmpty()) null else text.toBigDecimalOrNull()
+        if (text.isNotEmpty() && (price == null || price.signum() <= 0)) {
+            _state.update { it.copy(manualPriceError = "1원 이상의 숫자로 입력해 주세요.") }
+            return
+        }
+        _state.update { it.copy(isSavingPrice = true, manualPriceError = null, confirmError = null) }
+        viewModelScope.launch {
+            try {
+                when (val result = action(tripId, price)) {
+                    is DomainResult.Success -> refreshAfterConflict()
+                    is DomainResult.Failure -> _state.update { it.copy(manualPriceError = result.error.code.userMessage()) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(manualPriceError = UNEXPECTED_FAILURE_MESSAGE) }
+            } finally {
+                _state.update { it.copy(isSavingPrice = false) }
+            }
         }
     }
 
@@ -305,6 +344,7 @@ class SettlementViewModel(
                     confirmPayment = container.confirmPaymentSettlement,
                     attempts = SavedStateAttemptStore(handle),
                     settings = container.settingsRepository,
+                    setManualUnitPrice = container.setManualFuelUnitPrice,
                 )
             }
         }

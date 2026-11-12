@@ -6,6 +6,7 @@ import com.gatita.data.local.entity.PaymentSettlementEntity
 import com.gatita.data.mapper.toDomain
 import com.gatita.data.mapper.toEntity
 import com.gatita.domain.model.Cost
+import com.gatita.domain.model.FUEL_SEGMENTS_CALCULATION_VERSION
 import com.gatita.domain.model.PaymentSettlement
 import com.gatita.domain.model.TripSummary
 import com.gatita.domain.model.TripWithCosts
@@ -107,10 +108,23 @@ class RoomPaymentSettlementRepository(private val db: AppDatabase) : PaymentSett
         val settlementId = dao.insertSettlement(settlement.toEntity())
         dao.insertCosts(settlement.costs.map { it.toEntity(settlementId) })
         dao.insertShares(settlement.shares.map { it.toEntity(settlementId) })
+        if (settlement.fuelIntervals.isNotEmpty()) {
+            dao.insertFuelIntervals(settlement.fuelIntervals.map { it.toEntity(settlementId) })
+        }
 
         check(dao.sumShares(settlementId) == settlement.totalWon) { "Stored shares do not add up to the total." }
-        check(dao.sumIncludedCosts(settlementId) == settlement.totalWon) {
-            "Stored included costs do not add up to the total."
+        if (settlement.calculationVersion == FUEL_SEGMENTS_CALCULATION_VERSION) {
+            // 유류비는 구간 계산값이므로 입력한 FUEL 금액은 합계 검사에서 뺀다.
+            check(dao.sumIncludedNonFuelCosts(settlementId) == settlement.otherTotalWon) {
+                "Stored other costs do not add up to the other total."
+            }
+            check(settlement.fuelTotalWon + settlement.otherTotalWon == settlement.totalWon) {
+                "Fuel and other totals do not add up to the total."
+            }
+        } else {
+            check(dao.sumIncludedCosts(settlementId) == settlement.totalWon) {
+                "Stored included costs do not add up to the total."
+            }
         }
         settlement.copy(id = settlementId)
     }
@@ -118,5 +132,6 @@ class RoomPaymentSettlementRepository(private val db: AppDatabase) : PaymentSett
     private suspend fun load(entity: PaymentSettlementEntity): PaymentSettlement = entity.toDomain(
         costs = dao.getCosts(entity.id),
         shares = dao.getShares(entity.id),
+        fuelIntervals = dao.getFuelIntervals(entity.id),
     )
 }

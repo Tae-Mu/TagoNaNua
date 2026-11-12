@@ -134,6 +134,7 @@ fun CostFormContent(state:CostFormUiState,onBack:()->Unit,onRetryLoad:()->Unit,o
                         }
                     }
                     }
+                    if(fuel)Note("주유 비용은 '주유 구간'의 단가를 정하는 데 써요. 주유한 뒤에 입력해도 되고, 주유 횟수와 비용 건수가 맞아야 여행을 마칠 수 있어요.")
                     state.saveError?.let{ErrorMessage(it)}
                     if(state.conflict) SecondaryButton("최신 내용 다시 불러오기",onRetryLoad)
                     ActionButton(if(state.isEdit)"수정 완료" else "추가하기",onSave,busy=state.isSaving,

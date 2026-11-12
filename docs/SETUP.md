@@ -91,11 +91,13 @@ adb shell "run-as com.gatita --user 10 ls -l databases" # 앱 DB 확인
 - 새 여행을 시작하면 Pleos SDK로 **계기판 주행거리**(`Odometer.getCurrentDistanceDriven`)를 읽어 `VehicleSource.PLEOS`로 저장합니다.
   10초 안에 읽지 못하면 시작하지 않고 안내를 보여 줍니다. 0km나 샘플 값으로 대체하지 않습니다.
 - 에뮬레이터에서는 주행거리가 `0`으로 읽힙니다. 에뮬레이터 값이며 실제 차량 검증이 아닙니다.
-- **연비·전비는 읽지 않습니다(`efficiency = null`).**
-  - `Fuel`과 `EvBattery`에 연비·전비 API가 각각 4개씩(현재·순간·누적·충전 이후) 있지만, 반환값이 `Float?`이고 단위가 문서에 없습니다.
+- **연료 %·연비·전비는 읽도록 구현했지만 에뮬레이터에서는 값이 없습니다(`efficiency = null`).**
+  - `Fuel`과 `EvBattery`에 연비·전비 API가 각각 4개씩(현재·순간·누적·주유/충전 이후) 있습니다. 반환값은 `Float?`입니다.
+  - 단위는 SDK 2.3.2 소스(sources.jar)의 KDoc에 명시되어 있습니다. 내연 `Fuel`은 **L/100km**, 전기 `EvBattery`는 **km/kWh**입니다. 웹 문서 본문에는 단위가 없습니다.
   - Pleos 에뮬레이터에서 8개를 모두 호출했을 때 "지원하지 않는 속성"으로 실패했습니다. 실제 차량이나 속성이 설정된 환경이 필요합니다.
-  - 단위(km/L, L/100km, km/kWh)와 집계 기준은 Pleos 확인이 필요합니다(미확인).
-- 정산 금액은 입력한 실제 결제액 기준이라 연비와 무관합니다.
+  - 집계 기준은 KDoc에 "마지막 주유/충전 이후", "운행 기간 누적"으로만 적혀 있고, 시동 때 초기화되는지는 확인되지 않았습니다(미확인).
+  - 앱은 `getFuelPercent`·`getSinceChargeFuelEconomy`(전기는 `getEvBatteryStateOfCharge`·`getSinceChargeEvEfficiency`)·`getTripSinceRefillDrivingDistance`(m→km)와 숨김·deprecated인 기어 API를 호출하고, 실패하면 해당 값만 `null`로 둡니다.
+- 새 여행의 정산은 구간별 유류비 방식(`fuel-segments-v2`)입니다. 에뮬레이터 값은 실제 차량 검증이 아닙니다.
 
 ## 7. 테스트
 

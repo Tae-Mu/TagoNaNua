@@ -1,6 +1,7 @@
 package com.gatita.domain.usecase
 
 import com.gatita.domain.calculator.CostValidator
+import com.gatita.domain.calculator.FuelSettlementPlanner
 import com.gatita.domain.calculator.PaymentSettlementCalculator
 import com.gatita.domain.calculator.PaymentSummaryFormatter
 import com.gatita.domain.model.Cost
@@ -9,6 +10,7 @@ import com.gatita.domain.model.CostKind
 import com.gatita.domain.model.CostLedger
 import com.gatita.domain.model.DomainResult
 import com.gatita.domain.model.ErrorCode
+import com.gatita.domain.model.FUEL_SEGMENTS_CALCULATION_VERSION
 import com.gatita.domain.model.HistoryFilter
 import com.gatita.domain.model.HistorySummary
 import com.gatita.domain.model.PaymentPreview
@@ -21,6 +23,7 @@ import com.gatita.domain.model.UNSAVED_ID
 import com.gatita.domain.model.domainFailure
 import com.gatita.domain.repository.CostRepository
 import com.gatita.domain.repository.EmptyTripRepository
+import com.gatita.domain.repository.FuelTrackingRepository
 import com.gatita.domain.repository.PaymentSettlementRepository
 import com.gatita.domain.repository.SettlementRepository
 import com.gatita.domain.repository.TransactionRunner
@@ -68,10 +71,22 @@ private suspend fun readPreview(
     costs: CostRepository,
     tripId: Long,
     driverName: String?,
+    fuelTracking: FuelTrackingRepository? = null,
 ): DomainResult<PaymentPreview> {
     val trip = trips.getTrip(tripId) ?: return domainFailure(ErrorCode.TRIP_NOT_FOUND, "Trip $tripId not found.")
+    if (trip.usesFuelSegments() && fuelTracking != null) {
+        return FuelSettlementPlanner.preview(
+            trip,
+            costs.getCosts(tripId),
+            fuelTracking.getSnapshots(tripId),
+            fuelTracking.getRefuels(tripId),
+            driverName,
+        )
+    }
     return PaymentSettlementCalculator.preview(trip, costs.getCosts(tripId), trips.getSegments(tripId), driverName)
 }
+
+private fun Trip.usesFuelSegments(): Boolean = calculationVersion == FUEL_SEGMENTS_CALCULATION_VERSION
 
 // ------------------------------------------------------------------ 여행 완료
 
@@ -91,6 +106,7 @@ class CompleteTripUseCase(
     private val trips: TripRepository,
     private val costs: CostRepository,
     private val transactions: TransactionRunner,
+    private val fuelTracking: FuelTrackingRepository? = null,
 ) {
     suspend operator fun invoke(command: CompleteTripCommand): DomainResult<Trip> =
         transactions.run { complete(command) }
@@ -130,6 +146,13 @@ class CompleteTripUseCase(
         }
         if (end == trip.startOdometerKm && costs.getCosts(trip.id).isEmpty()) {
             return domainFailure(ErrorCode.EMPTY_TRIP, "A trip with no distance and no costs cannot be completed.")
+        }
+        if (trip.usesFuelSegments() && fuelTracking != null) {
+            val matching = FuelSettlementPlanner.checkCompletion(
+                costs.getCosts(trip.id),
+                fuelTracking.getRefuels(trip.id),
+            )
+            if (matching is DomainResult.Failure) return matching
         }
         return DomainResult.Success(trips.markFinished(trip.id, end, command.endedAtMillis))
     }
@@ -350,6 +373,7 @@ class UpdateSplitPolicyUseCase(
     private val ledger: TripLedgerRepository,
     private val transactions: TransactionRunner,
     private val clock: Clock,
+    private val fuelTracking: FuelTrackingRepository? = null,
 ) {
     suspend operator fun invoke(
         tripId: Long,
@@ -383,7 +407,7 @@ class UpdateSplitPolicyUseCase(
                     return@run domainFailure(ErrorCode.STALE_REVISION, "Trip changed since it was loaded.")
                 }
             }
-            readPreview(trips, costs, tripId, driverName)
+            readPreview(trips, costs, tripId, driverName, fuelTracking)
         }
     }
 }
@@ -396,6 +420,7 @@ class PreviewPaymentSettlementUseCase(
     private val trips: TripRepository,
     private val costs: CostRepository,
     private val transactions: TransactionRunner,
+    private val fuelTracking: FuelTrackingRepository? = null,
 ) {
     suspend operator fun invoke(tripId: Long, driverName: String? = null): DomainResult<PaymentPreview> =
         transactions.run {
@@ -404,7 +429,7 @@ class PreviewPaymentSettlementUseCase(
             if (trip.status == TripStatus.SETTLED) {
                 domainFailure(ErrorCode.ALREADY_SETTLED, "Trip already has a confirmed settlement.")
             } else {
-                readPreview(trips, costs, tripId, driverName)
+                readPreview(trips, costs, tripId, driverName, fuelTracking)
             }
         }
 }
@@ -438,6 +463,7 @@ class ConfirmPaymentSettlementUseCase(
     private val settlements: PaymentSettlementRepository,
     private val transactions: TransactionRunner,
     private val clock: Clock,
+    private val fuelTracking: FuelTrackingRepository? = null,
 ) {
     suspend operator fun invoke(command: ConfirmPaymentCommand): DomainResult<PaymentSettlement> {
         val requestId = when (val result = requestIdOrFailure(command.requestId)) {
@@ -482,8 +508,18 @@ class ConfirmPaymentSettlementUseCase(
             return domainFailure(ErrorCode.STALE_REVISION, "Trip changed since the preview was shown.")
         }
 
-        val snapshot = when (
-            val result = PaymentSettlementCalculator.buildSnapshot(
+        val built = if (trip.usesFuelSegments() && fuelTracking != null) {
+            FuelSettlementPlanner.buildSnapshot(
+                trip = trip,
+                costs = costs.getCosts(tripId),
+                snapshots = fuelTracking.getSnapshots(tripId),
+                refuels = fuelTracking.getRefuels(tripId),
+                driverName = driverName,
+                requestId = requestId,
+                confirmedAtMillis = clock.millis(),
+            )
+        } else {
+            PaymentSettlementCalculator.buildSnapshot(
                 trip = trip,
                 costs = costs.getCosts(tripId),
                 segments = trips.getSegments(tripId),
@@ -491,7 +527,8 @@ class ConfirmPaymentSettlementUseCase(
                 requestId = requestId,
                 confirmedAtMillis = clock.millis(),
             )
-        ) {
+        }
+        val snapshot = when (val result = built) {
             is DomainResult.Success -> result.value
             is DomainResult.Failure -> return result
         }
