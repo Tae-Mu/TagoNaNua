@@ -22,7 +22,7 @@ Row(Modifier.padding(horizontal=28.dp,vertical=16.dp),verticalAlignment=Alignmen
 Column(horizontalAlignment=Alignment.CenterHorizontally){Text(day,fontSize=28.sp);Note("11월")}
 VerticalDivider(Modifier.height(58.dp),color=Line)
 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(title,fontSize=20.sp,fontWeight=FontWeight.Bold);Note(detail)}
-Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(8.dp)){AmountLabel(amount,"원",26);Surface(color=if(fixed)MaterialTheme.colorScheme.surface else Tint,shape=androidx.compose.foundation.shape.RoundedCornerShape(6.dp)){Text(if(fixed)"정산 확정" else "정산 전",Modifier.padding(horizontal=8.dp,vertical=4.dp),color=Blue,fontSize=12.sp)}}
-if(onDelete!=null)TextButton(onDelete){Text("삭제",fontSize=12.sp)}
+Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(8.dp)){AmountLabel(amount,"원",26);Surface(color=if(fixed)MaterialTheme.colorScheme.surface else Tint,shape=androidx.compose.foundation.shape.RoundedCornerShape(6.dp)){Text(if(fixed)"정산 확정" else "정산 전",Modifier.padding(horizontal=8.dp,vertical=4.dp),color=Blue,fontSize=15.sp)}}
+if(onDelete!=null)TextButton(onDelete){Text("삭제",fontSize=15.sp)}
 Text("›",fontSize=26.sp,color=Muted)
 }}}

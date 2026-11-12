@@ -24,14 +24,14 @@ import com.gatita.core.ui.theme.*
  var people by rememberSaveable{mutableIntStateOf(4)}
  FlowRow(horizontalArrangement=Arrangement.spacedBy(24.dp)){
   listOf("출발 준비","여행 기록","금액 확인","정산 완료").forEachIndexed{i,t->Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
-   Surface(color=if(i==0)Blue else Tint,shape=RoundedCornerShape(50)){Text("0${i+1}",Modifier.padding(8.dp),color=if(i==0)MaterialTheme.colorScheme.surface else Muted,fontSize=12.sp)}
-   Text(t,fontSize=14.sp,color=if(i==0)Blue else Muted)
+   Surface(color=if(i==0)Blue else Tint,shape=RoundedCornerShape(50)){Text("0${i+1}",Modifier.padding(8.dp),color=if(i==0)MaterialTheme.colorScheme.surface else Muted,fontSize=15.sp)}
+   Text(t,fontSize=16.sp,color=if(i==0)Blue else Muted)
   }}
  }
  HorizontalDivider(color=Line)
  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(24.dp)){
   Panel(Modifier.weight(1.15f)){
-   Text("YOUR NEXT JOURNEY",color=Muted,fontSize=11.sp,letterSpacing=1.sp)
+   Text("YOUR NEXT JOURNEY",color=Muted,fontSize=16.sp,letterSpacing=1.sp)
    Text("이번 여행을 알려주세요",fontSize=26.sp,fontWeight=FontWeight.Bold)
    Input("여행 이름 · 선택",name,{name=it},"예: 강릉으로 떠나는 주말")
    Note("비워두면 ‘새로운 여행’으로 표시해요.")

@@ -42,7 +42,7 @@ import com.gatita.core.ui.theme.*
   }
   Panel(Modifier.weight(1f).fillMaxHeight()){Category("VEHICLE","연결 차량");Text("아반떼 CN8    시연 차량",fontSize=18.sp);Note("실제 차량에 연결된 상태가 아니에요.")}
  }
- Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("퍼블리싱 세션에서만 적용돼요. 실제 저장은 연결 전이에요.",Modifier.weight(1f),color=Muted,fontSize=13.sp);Action("설정 저장"){onDark(theme=="야간" || (theme=="시스템" && systemDark));notice="현재 화면에 설정을 적용했어요."}}
+ Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("퍼블리싱 세션에서만 적용돼요. 실제 저장은 연결 전이에요.",Modifier.weight(1f),color=Muted,fontSize=15.sp);Action("설정 저장"){onDark(theme=="야간" || (theme=="시스템" && systemDark));notice="현재 화면에 설정을 적용했어요."}}
  Panel(Modifier.fillMaxWidth()){
   Text("데이터와 앱 정보",fontSize=20.sp,fontWeight=FontWeight.Bold)
   TextButton({info=true}){Text("저장 데이터 안내 · 설정과 여행 기록의 보관 방식  ›")}
@@ -52,4 +52,4 @@ import com.gatita.core.ui.theme.*
  }
  if(info)AlertDialog(onDismissRequest={info=false},title={Text("저장 데이터 안내")},text={Text("이 앱은 UI 검토용 시안입니다. 차량 연결과 여행·비용 기록의 영속 저장은 연결하지 않았어요.")},confirmButton={TextButton({info=false}){Text("확인")}})
 }
-@Composable private fun Category(label:String,title:String){Text(label,fontSize=11.sp,color=Muted,letterSpacing=1.sp);Text(title,fontSize=20.sp,fontWeight=FontWeight.Bold)}
+@Composable private fun Category(label:String,title:String){Text(label,fontSize=16.sp,color=Muted,letterSpacing=1.sp);Text(title,fontSize=20.sp,fontWeight=FontWeight.Bold)}

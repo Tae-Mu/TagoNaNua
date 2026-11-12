@@ -45,7 +45,7 @@ Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizon
 CostIcon(cost.kind)
 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)){Note(cost.kind);Text(cost.title,fontSize=18.sp,fontWeight=FontWeight.Medium);Note(cost.detail)}
 AmountLabel(cost.amount,"원",24,if(included)Ink else Muted)
-Column(horizontalAlignment=Alignment.End){Row(verticalAlignment=Alignment.CenterVertically){Checkbox(included,{included=it});Text("정산 포함",fontSize=13.sp)}
+Column(horizontalAlignment=Alignment.End){Row(verticalAlignment=Alignment.CenterVertically){Checkbox(included,{included=it});Text("정산 포함",fontSize=15.sp)}
 Row {TextButton({onEdit(cost)}){Text("수정")};TextButton({confirm("${cost.title} 비용을 삭제할까요?\n${cost.amount}원") {}}){Text("삭제")}}}
 }
 }}

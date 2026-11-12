@@ -18,7 +18,7 @@ object PaymentSummaryFormatter {
         appendLine(
             "인원: ${settlement.people}명" + if (settlement.includeDriver) "" else " (운전자 제외, ${settlement.splitPeople}명이 분담)",
         )
-        appendLine("분담: " + settlement.shares.joinToString(" / ") { "${it.displayName} ${won(it.amountWon)}" })
+        appendLine("분담: " + settlement.shares.joinToString(" / ") { "${it.displayName}: ${won(it.amountWon)}" })
         append(DISCLAIMER)
     }
 

@@ -14,7 +14,7 @@ class ScreensTest {
     private fun home(state:HomeUiState) {rule.setContent {TagoTheme {HomeContent(state,{},{},{},{},{},{})}}}
     @Test fun homeOffersPrepareWithoutManualDistance() {
         home(HomeUiState(isLoading=false))
-        rule.onNodeWithText("차량 연결 대기").assertExists()
+        rule.onNodeWithText("출발 시 연결 확인").assertExists()
         rule.onNodeWithText("새 여행 준비").assertExists().performClick()
         rule.onNodeWithText("여행 기록 시작").assertExists()
         rule.onNodeWithText("출발 계기판 주행거리 (km)").assertDoesNotExist()
@@ -36,6 +36,6 @@ class ScreensTest {
     }
     @Test fun resultWithoutSettlementShowsEmptyState() {
         rule.setContent {TagoTheme {ResultContent(ResultUiState(isLoading=false,notFound=true),{},{},{})}}
-        rule.onNodeWithText("확정된 정산이 없습니다").assertExists()
+        rule.onNodeWithText("확정된 정산이 없어요").assertExists()
     }
 }

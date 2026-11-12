@@ -109,7 +109,7 @@ class ResultViewModel(
                         is SettlementRecord.Legacy -> _state.update {
                             ResultUiState(
                                 isLoading = false,
-                                confirmedAt = Formatters.dateTime(record.settlement.confirmedAtMillis),
+                                confirmedAt = Formatters.friendlyDateTime(record.settlement.confirmedAtMillis),
                                 content = ResultContentState.Legacy(record.settlement.calculation.toView()),
                             )
                         }
@@ -141,7 +141,7 @@ class ResultViewModel(
         _state.update {
             ResultUiState(
                 isLoading = false,
-                confirmedAt = Formatters.dateTime(settlement.confirmedAtMillis),
+                confirmedAt = Formatters.friendlyDateTime(settlement.confirmedAtMillis),
                 content = ResultContentState.Payments(toView(settlement), text, qr),
             )
         }
@@ -164,13 +164,13 @@ class ResultViewModel(
         shares = s.shares.map { ShareLine(it.displayName, Formatters.won(it.amountWon)) },
         costs = s.costs.map { cost ->
             CostLine(
-                title = "${Formatters.costKind(cost.kind)} · ${cost.description ?: "내용 없음"}",
+                title = cost.description?.takeIf { it.isNotBlank() }?.let { "${Formatters.costKind(cost.kind)} · $it" } ?: Formatters.costKind(cost.kind),
                 amount = Formatters.won(cost.amountWon),
                 details = buildList {
                     if (cost.kind == CostKind.FUEL) {
                         cost.unitPriceWonPerLiter?.let { add("리터당 " + Formatters.wonDecimal(it)) }
-                        cost.fuelLiters?.let { add("주유량 " + Formatters.decimal(it, 3) + " L (표시용)") }
-                        cost.paidOn?.let { add("주유일 $it") }
+                        cost.fuelLiters?.let { add("주유량 약 " + Formatters.decimal(it, 3) + " L") }
+                        cost.paidOn?.let { add("주유일 " + Formatters.shortDate(it)) }
                     }
                 },
                 included = cost.included,

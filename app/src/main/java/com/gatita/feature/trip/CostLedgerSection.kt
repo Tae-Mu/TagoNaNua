@@ -21,11 +21,11 @@ fun CostLedgerSection(ledger:CostLedger,busy:Boolean,onIncludedChange:(Cost,Bool
         Row(Modifier.height(IntrinsicSize.Min)) {
             Row(Modifier.weight(1.65f).fillMaxHeight().background(Navy).padding(28.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(20.dp)) {
                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Text("등록한 총비용",fontSize=13.sp,color=Color(0xFFC1D8E9))
+                    Text("등록한 총비용",fontSize=15.sp,color=Color(0xFFC1D8E9))
                     AmountLabel(Formatters.won(ledger.registeredTotalWon).removeSuffix("원"),"원",42,Color.White)
-                    Text("비용 ${ledger.count}건",fontSize=12.sp,color=Color(0xFFC1D8E9))
+                    Text("비용 ${ledger.count}건",fontSize=15.sp,color=Color(0xFFC1D8E9))
                 }
-                if(ledger.editable && onAdd!=null)Action("＋ 비용 추가",primary=false,minHeight=46,textSize=14,enabled=!busy,onClick=onAdd)
+                if(ledger.editable && onAdd!=null)Action("비용 추가",primary=false,textSize=16,enabled=!busy,onClick=onAdd)
             }
             Column(Modifier.weight(1f).padding(28.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 Note("함께 나눌 금액")
@@ -34,8 +34,13 @@ fun CostLedgerSection(ledger:CostLedger,busy:Boolean,onIncludedChange:(Cost,Bool
             }
         }
     }
-    Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-        CostKind.entries.forEach { kind->Panel(Modifier.weight(1f)){
+    // [목적] 종류별 합계 칸 (금액이 있는 종류만, 2종류 이상일 때)
+    // [이유] 0원 칸이 자리를 차지하고, 1종류뿐이면 위 총비용과 같은 숫자를 반복해 숨김
+    // [사이드 임팩트] 없음 (표시만 변경)
+    // [수정 시 고려사항] 종류별 금액은 비용 목록 각 행에도 있으므로 여기서 빠져도 정보 손실 없음
+    val usedKinds=CostKind.entries.filter{(ledger.totalsByKind[it]?:0L)>0L}
+    if(usedKinds.size>1) Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+        usedKinds.forEach { kind->Panel(Modifier.weight(1f)){
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 CostIcon(iconKind(kind))
                 Column { Note(Formatters.costKind(kind));AmountLabel(Formatters.won(ledger.totalsByKind[kind]?:0).removeSuffix("원"),"원",24) }
@@ -49,16 +54,24 @@ fun CostLedgerSection(ledger:CostLedger,busy:Boolean,onIncludedChange:(Cost,Bool
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(18.dp),verticalAlignment=Alignment.CenterVertically) {
                 CostIcon(iconKind(cost.kind))
                 Column(Modifier.weight(1f)){
-                    Text(cost.description?.takeIf{it.isNotBlank()}?:Formatters.costKind(cost.kind),fontSize=19.sp)
-                    Note(Formatters.costKind(cost.kind))
-                    if(cost.kind==CostKind.FUEL)Note("${cost.paidOn} · ${cost.unitPriceWonPerLiter?.toPlainString()}원/L · 약 ${cost.fuelLiters} L")
+                    // [목적] 비용 행 제목·부제 (메모가 있을 때만 종류를 부제로)
+                    // [이유] 메모가 없으면 제목과 부제가 '주유 / 주유'로 반복됨
+                    // [사이드 임팩트] 없음
+                    // [수정 시 고려사항] 메모 없는 행은 제목이 종류명
+                    val memo=cost.description?.takeIf{it.isNotBlank()}
+                    Text(memo?:Formatters.costKind(cost.kind),fontSize=19.sp)
+                    if(memo!=null) Note(Formatters.costKind(cost.kind))
+                    if(cost.kind==CostKind.FUEL)Note(listOfNotNull(cost.paidOn?.let(Formatters::shortDate),cost.unitPriceWonPerLiter?.let{Formatters.wonDecimal(it)+"/L"},cost.fuelLiters?.let{"약 $it L"}).joinToString(" · "))
                 }
-                Column(horizontalAlignment=Alignment.End) {
-                    AmountLabel(Formatters.won(cost.amountWon).removeSuffix("원"),"원",24)
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        Checkbox(cost.included,{onIncludedChange(cost,it)},enabled=ledger.editable&&!busy);Text("정산 포함")
-                        if(ledger.editable){TextButton({onEdit(cost)},enabled=!busy){Text("수정")};TextButton({onDelete(cost)},enabled=!busy){Text("삭제")}}
-                    }
+                // [목적] 비용 행 오른쪽: 금액 → 정산 포함 → 수정·삭제를 한 줄에 가운데 맞춤으로 배치
+                // [이유] 금액이 버튼 줄 위에 따로 떠 있어 행의 오른쪽이 두 층으로 어긋나 보였음. 수정·삭제는 56dp 보조 버튼(운전석에서 누르기 쉬운 크기) 유지
+                // [사이드 임팩트] 행 높이가 줄어듦
+                // [수정 시 고려사항] 삭제는 확인 대화상자를 거치므로 여기서 추가 확인 불필요. 금액과 조작 사이 간격(28dp)을 줄이면 다시 붙어 보임
+                AmountLabel(Formatters.won(cost.amountWon).removeSuffix("원"),"원",24)
+                Spacer(Modifier.width(10.dp))
+                Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                    Checkbox(cost.included,{onIncludedChange(cost,it)},enabled=ledger.editable&&!busy);Text("정산 포함",fontSize=16.sp)
+                    if(ledger.editable){Action("수정",primary=false,textSize=16,horizontalPadding=18,enabled=!busy){onEdit(cost)};Action("삭제",primary=false,textSize=16,horizontalPadding=18,enabled=!busy){onDelete(cost)}}
                 }
             }
         }

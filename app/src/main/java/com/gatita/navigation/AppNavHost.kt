@@ -77,10 +77,14 @@ fun AppNavHost(container: AppContainer) {
         }
     }) {
     NavHost(navController = nav, startDestination = Routes.HOME,
-        enterTransition={ fadeIn(tween(180, easing=FastOutSlowInEasing)) },
-        exitTransition={ fadeOut(tween(180, easing=FastOutSlowInEasing)) },
-        popEnterTransition={ fadeIn(tween(180, easing=FastOutSlowInEasing)) },
-        popExitTransition={ fadeOut(tween(180, easing=FastOutSlowInEasing)) }) {
+        // [목적] 화면 전환: 새 화면은 살짝 작은 상태에서 커지며 나타나고, 이전 화면은 먼저 빠르게 사라짐
+        // [이유] 같은 길이의 단순 겹침(180ms)이라 두 화면이 뿌옇게 겹쳐 보이고 방향감이 없어 딱딱했음
+        // [사이드 임팩트] 모든 화면 이동에 적용. 레이아웃은 그대로, 그리기만 변함
+        // [수정 시 고려사항] 차량 화면이라 좌우로 크게 미는 전환은 쓰지 말 것. 합쳐서 0.25초를 넘기지 말 것
+        enterTransition={ fadeIn(tween(220, delayMillis=60, easing=FastOutSlowInEasing)) + androidx.compose.animation.scaleIn(tween(220, delayMillis=60, easing=FastOutSlowInEasing), initialScale=.985f) },
+        exitTransition={ fadeOut(tween(100, easing=FastOutSlowInEasing)) },
+        popEnterTransition={ fadeIn(tween(220, delayMillis=60, easing=FastOutSlowInEasing)) },
+        popExitTransition={ fadeOut(tween(100, easing=FastOutSlowInEasing)) + androidx.compose.animation.scaleOut(tween(100), targetScale=.985f) }) {
         journeyDestination("settings", journey) { com.gatita.feature.settings.SettingsRoute(settingsViewModel) }
         journeyDestination("settlements", journey) {
             com.gatita.feature.home.SettlementListRoute(

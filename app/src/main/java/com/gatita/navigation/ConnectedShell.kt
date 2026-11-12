@@ -19,17 +19,19 @@ internal fun ConnectedShell(selected:String,onNavigate:(String)->Unit,content:@C
     Surface(color=MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
             if(maxWidth>=600.dp) Row {
-                Surface(Modifier.width(116.dp).fillMaxHeight()) {
-                    Column(Modifier.padding(12.dp,28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(20.dp)) {
+                Surface(Modifier.width(104.dp).fillMaxHeight()) {
+                    Column(Modifier.padding(10.dp,22.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(14.dp)) {
                         Brand();Spacer(Modifier.height(12.dp))
                         items.forEach { (route,label,icon)->
                             if(route=="settings")Spacer(Modifier.weight(1f))
-                            TextButton({onNavigate(route)},Modifier.fillMaxWidth().height(84.dp),
+                            val interaction=remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                            TextButton({onNavigate(route)},Modifier.fillMaxWidth().height(84.dp).then(com.gatita.core.ui.component.pressMotion(interaction,true)),
+                                interactionSource=interaction,
                                 shape=androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
                                 colors=ButtonDefaults.textButtonColors(containerColor=if(selected==route)Tint else androidx.compose.ui.graphics.Color.Transparent,
                                     contentColor=if(selected==route)Blue else Muted)) {
                                 Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                                    Icon(painterResource(icon),null);Text(label)
+                                    Icon(painterResource(icon),null,Modifier.size(26.dp));Text(label,fontSize=androidx.compose.ui.unit.TextUnit(15f,androidx.compose.ui.unit.TextUnitType.Sp))
                                 }
                             }
                         }

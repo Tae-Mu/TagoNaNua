@@ -15,52 +15,53 @@ import com.gatita.core.ui.component.*
     var confirmReset by remember { mutableStateOf(false) }
     GatitaScaffold("설정",subtitle="다음 여행도 나에게 맞게 준비해요.") {
         if(state.loading) CircularProgressIndicator() else if(state.loadFailed) ErrorBlock(state.message.orEmpty(),viewModel::load) else {
-            Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp)) {
-                Row(Modifier.fillMaxWidth().padding(28.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(18.dp)) {
-                    Surface(color=MaterialTheme.colorScheme.surface,shape=androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) {
-                        Text(state.draft.driverName.take(1).ifBlank{"나"},Modifier.padding(18.dp),color=MaterialTheme.colorScheme.primary)
-                    }
-                    Column { Text(state.draft.driverName.ifBlank { "타고와 함께하는 운전자" },style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface);Note("편한 여행을 위한 나의 기본 설정") }
-                }
-            }
+            // [목적] 설정 카드 4종(내 정보·정산 기본값·화면 모드·연결 차량). 스위치·화면 모드는 누르는 즉시 저장
+            // [이유] 상단 프로필 배너는 '내 정보' 카드와 같은 이름을 반복하는 장식이었고, 글자 하한 상향 후 '설정 저장' 버튼을 첫 화면 밖으로 밀어내 제거함
+            // [사이드 임팩트] 없음 (표시만 변경, draft/저장 로직 그대로)
+            // [수정 시 고려사항] 진행 중 여행 배너가 함께 보이는 상태에서도 '설정 저장'이 첫 화면에 보이는지 확인할 것
             Row(Modifier.height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
                 Panel(Modifier.weight(1f).fillMaxHeight(),padding=28,gap=20) {
-                    Text("PROFILE",fontSize=11.sp,letterSpacing=2.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("내 정보",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
-                    TextInput("정산에 표시할 이름",state.draft.driverName,{viewModel.edit(state.draft.copy(driverName=it))},enabled=!state.saving)
+                    TextInput("정산에 표시할 이름",state.draft.driverName,{viewModel.edit(state.draft.copy(driverName=it))},enabled=!state.saving,placeholder="나 (운전자)")
                     Note("비워두면 ‘나 (운전자)’로 표시해요. 확정된 정산의 이름은 바뀌지 않아요.")
                 }
                 Panel(Modifier.weight(1f).fillMaxHeight(),padding=28,gap=20) {
-                    Text("SETTLEMENT",fontSize=11.sp,letterSpacing=2.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("정산 기본값",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
-                    SwitchRow("나 (운전자) 포함",state.draft.includeDriver,{viewModel.edit(state.draft.copy(includeDriver=it))},enabled=!state.saving)
+                    SwitchRow("나 (운전자) 포함",state.draft.includeDriver,{viewModel.edit(state.draft.copy(includeDriver=it));viewModel.save()},enabled=!state.saving)
                     Note("새 여행에 적용돼요. 혼자 타는 여행은 본인이 부담해요.")
                 }
             }
             Row(Modifier.height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
                 Panel(Modifier.weight(1f).fillMaxHeight(),padding=28,gap=20) {
-                    Text("APPEARANCE",fontSize=11.sp,letterSpacing=2.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("화면 모드",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
-                    ChoiceChips(listOf("시스템","주간","야간"),state.draft.appearance,{it},{viewModel.edit(state.draft.copy(appearance=it))},enabled=!state.saving)
-                    Note("저장한 설정은 앱을 다시 열어도 유지돼요.")
+                    ChoiceChips(listOf("시스템","주간","야간"),state.draft.appearance,{it},{viewModel.edit(state.draft.copy(appearance=it));viewModel.save()},enabled=!state.saving)
+                    Note("고르는 즉시 저장돼요.")
                 }
                 Panel(Modifier.weight(1f).fillMaxHeight(),padding=28,gap=20) {
-                    Text("VEHICLE",fontSize=11.sp,letterSpacing=2.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("연결 차량",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
-                    Text("차량 연결 전")
+                    Text("여행 시작 시 연결 확인")
                     Note("이동 거리는 차량에서 받고, 비용은 직접 입력해요.")
                 }
             }
             state.message?.let { Text(it,color=MaterialTheme.colorScheme.primary) }
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) { Action(if(state.saving) "저장 중…" else "설정 저장",enabled=!state.saving){viewModel.save()} }
-            Panel(Modifier.fillMaxWidth()) {
-                Text("기록과 연결",style=MaterialTheme.typography.titleLarge.copy(fontSize=20.sp,fontWeight=FontWeight.SemiBold),color=MaterialTheme.colorScheme.onSurface)
-                Note("여행과 비용은 이 기기에 저장돼요. 앱 삭제 시 기록도 삭제돼요.")
-                Note("차량 연결: 미연결 · 이동 거리는 차량에서 받고, 비용은 직접 입력해요.")
-                Note("QR은 정산 요약 공유용이에요. 실제 송금과 입금 확인은 별도로 진행해 주세요.")
-                TextButton({confirmReset=true},enabled=!state.saving) {Text("설정 초기화")}
+            // [목적] 이름 변경 저장 버튼 (이름이 바뀌었을 때만)
+            // [이유] 스위치·화면 모드는 누르는 즉시 저장하도록 바꿨고, 저장 버튼이 항상 보이면 미저장 변경이 말없이 사라지는 문제가 있었음
+            // [사이드 임팩트] save()는 draft 전체를 저장하므로 입력 중인 이름도 스위치를 누를 때 함께 저장됨
+            // [수정 시 고려사항] 이름 검증 실패 시 message로 안내되므로 버튼이 남아 있어야 재시도 가능
+            androidx.compose.animation.AnimatedVisibility(state.draft.driverName!=state.saved.driverName) { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) { Action(if(state.saving) "저장 중…" else "이름 저장",enabled=!state.saving){viewModel.save()} } }
+            // [목적] 저장 위치·QR 안내와 '설정 초기화'를 카드 없이 화면 맨 아래 보조 영역으로 표시
+            // [이유] 조작할 것이 없는 안내문까지 카드에 담아 박스가 5개로 늘고, 설정 카드와 같은 무게로 보였음
+            // [사이드 임팩트] 없음 (표시만 변경, 초기화 동작 그대로)
+            // [수정 시 고려사항] 안내 문구는 정산 규칙상 필요한 고지이므로 지우지 말 것
+            HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+            Row(Modifier.fillMaxWidth().padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(24.dp)) {
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                    Note("여행과 비용은 이 기기에 저장돼요. 앱 삭제 시 기록도 삭제돼요.")
+                    Note("QR은 정산 요약 공유용이에요. 실제 송금과 입금 확인은 별도로 진행해 주세요.")
+                }
+                Action("설정 초기화",primary=false,textSize=16,enabled=!state.saving){confirmReset=true}
             }
         }
     }
-    if(confirmReset) AlertDialog(onDismissRequest={confirmReset=false},title={Text("설정을 초기화할까요?")},text={Text("이름·화면 모드·운전자 포함 기본값만 초기화해요. 여행과 정산 기록은 삭제하지 않아요.")},confirmButton={TextButton({confirmReset=false;viewModel.save(true)}){Text("초기화")}},dismissButton={TextButton({confirmReset=false}){Text("취소")}})
+    if(confirmReset) com.gatita.core.ui.component.VehicleAlertDialog(onDismissRequest={confirmReset=false},title={Text("설정을 초기화할까요?")},text={Text("이름·화면 모드·운전자 포함 기본값만 초기화해요. 여행과 정산 기록은 삭제하지 않아요.")},confirmButton={Action("초기화",modifier=Modifier.weight(1f)){confirmReset=false;viewModel.save(true)}},dismissButton={Action("취소",primary=false,modifier=Modifier.weight(1f)){confirmReset=false}})
 }

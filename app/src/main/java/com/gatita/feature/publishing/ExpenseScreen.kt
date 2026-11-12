@@ -32,10 +32,10 @@ internal fun expenseKindLabel(kind: String) = when (kind) {
     }
     Panel(Modifier.fillMaxWidth()) {
         Surface(color = Tint, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Text(tripName, Modifier.padding(14.dp), color = Blue, fontSize = 13.sp)
+            Text(tripName, Modifier.padding(14.dp), color = Blue, fontSize = 15.sp)
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("비용 종류", color = Muted, fontSize = 14.sp)
+            Text("비용 종류", color = Muted, fontSize = 16.sp)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("주차비", "톨비", "기타").forEach { value ->
                     FilterChip(kind == value, { onKind(value) }, label = { Text(expenseKindLabel(value)) })

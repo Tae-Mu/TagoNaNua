@@ -27,25 +27,25 @@ import com.gatita.core.ui.theme.*
  var summary by remember{mutableStateOf(false)}
  val clipboard=androidx.compose.ui.platform.LocalClipboardManager.current
  val summaryText="${trip.title} · 총 ${won(trip.total)}원 · ${count}명 분담 · 실제 입금은 별도 확인"
- Text(if(fixed)"정산 확정 · 확정한 금액을 보관했어요." else "금액 확인 · 함께 나눌 비용 내역과 인원을 확인해 주세요.",color=Muted,fontSize=14.sp)
+ Text(if(fixed)"정산 확정 · 확정한 금액을 보관했어요." else "금액 확인 · 함께 나눌 비용 내역과 인원을 확인해 주세요.",color=Muted,fontSize=16.sp)
  Surface(shape=RoundedCornerShape(24.dp),border=BorderStroke(1.dp,Line)){
   Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)){
    Column(Modifier.weight(1f).fillMaxHeight().background(Navy).padding(24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-    Text("TRIP TOTAL",color=androidx.compose.ui.graphics.Color(0xFFC5D9E8),fontSize=11.sp,letterSpacing=1.6.sp)
+    Text("TRIP TOTAL",color=androidx.compose.ui.graphics.Color(0xFFC5D9E8),fontSize=16.sp,letterSpacing=1.6.sp)
     Text("함께 나눌 총금액",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.SemiBold)
     AmountLabel(won(trip.total),"원",48,Color.White)
-    Text("주유비 ${won(fuel)}원 · 기타 비용 ${won(trip.total-fuel)}원",color=androidx.compose.ui.graphics.Color(0xFFC5D9E8),fontSize=13.sp)
+    Text("주유비 ${won(fuel)}원 · 기타 비용 ${won(trip.total-fuel)}원",color=androidx.compose.ui.graphics.Color(0xFFC5D9E8),fontSize=15.sp)
     HorizontalDivider(color=androidx.compose.ui.graphics.Color(0xFFC5D9E8).copy(alpha=.2f))
-    Row(Modifier.fillMaxWidth()){Text("정산에 포함한 비용",Modifier.weight(1f),color=androidx.compose.ui.graphics.Color(0xFFC5D9E8),fontSize=13.sp);Text(if(trip.total==149600L)"4 건" else "1 건",color=Color.White,fontSize=22.sp)}
+    Row(Modifier.fillMaxWidth()){Text("정산에 포함한 비용",Modifier.weight(1f),color=androidx.compose.ui.graphics.Color(0xFFC5D9E8),fontSize=15.sp);Text(if(trip.total==149600L)"4 건" else "1 건",color=Color.White,fontSize=22.sp)}
    }
    Column(Modifier.weight(1f).padding(24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-    Text("SPLIT TOGETHER",color=Muted,fontSize=11.sp,letterSpacing=1.6.sp)
+    Text("SPLIT TOGETHER",color=Muted,fontSize=16.sp,letterSpacing=1.6.sp)
     Text("${if(driver)people else (people-1).coerceAtLeast(1)}명이 함께 나누면",fontSize=22.sp,fontWeight=FontWeight.SemiBold)
     AmountLabel(if(remainder==0L)won(share) else "${won(share)}–${won(share+1)}","원 / 인",36,Blue)
     Note(if(driver)"운전자를 포함한 균등 분담" else "운전자를 제외한 균등 분담")
     TextButton({breakdown=true}){Text("개인별 전체 명세                       ${count}명 보기 ›")}
     HorizontalDivider(color=Line)
-    Row(verticalAlignment=Alignment.CenterVertically){Text("함께 탄 인원",Modifier.weight(1f),color=Muted,fontSize=14.sp);IconButton({people--;if(people==1)driver=true},enabled=!fixed&&people>1){Text("−",fontSize=24.sp)};Text("${people}명");IconButton({people++},enabled=!fixed&&people<8){Text("+",fontSize=24.sp)}}
+    Row(verticalAlignment=Alignment.CenterVertically){Text("함께 탄 인원",Modifier.weight(1f),color=Muted,fontSize=16.sp);IconButton({people--;if(people==1)driver=true},enabled=!fixed&&people>1){Text("−",fontSize=24.sp)};Text("${people}명");IconButton({people++},enabled=!fixed&&people<8){Text("+",fontSize=24.sp)}}
     HorizontalDivider(color=Line)
     Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("나 (운전자) 포함",fontWeight=FontWeight.SemiBold);Note(if(people==1)"혼자 탄 여행은 본인이 부담해요." else if(driver)"나도 여행 비용을 함께 나눠요." else "동승자끼리 여행 비용을 나눠요.")};Switch(driver,{driver=it},enabled=!fixed&&people>1)}
    }
@@ -64,7 +64,7 @@ import com.gatita.core.ui.theme.*
  }
  HorizontalDivider(color=Line)
  Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
-  Text("✓  확정 전에 포함한 비용 내역과 인원을 확인해 주세요.",Modifier.weight(1f),color=Muted,fontSize=13.sp)
+  Text("✓  확정 전에 포함한 비용 내역과 인원을 확인해 주세요.",Modifier.weight(1f),color=Muted,fontSize=15.sp)
   Action("나중에 정산",false){go(Page.Settlement)}
   if(!fixed)Action("이 금액으로 확정",arrow=true){confirm("정산을 확정할까요?"){fixed=true}}else {Action("요약 보기",false){summary=true};Action("정산 요약 복사"){clipboard.setText(androidx.compose.ui.text.AnnotatedString(summaryText));summary=true}}
  }

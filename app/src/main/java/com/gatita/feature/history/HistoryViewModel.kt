@@ -171,7 +171,8 @@ class HistoryViewModel(
             amountCaption = caption,
             amount = amount,
             distance = distanceKm?.let { Formatters.km(it) },
-            costSummary = if (section == HistorySection.LEGACY) null else "비용 ${costCount}건 중 ${includedCount}건 포함",
+            // 같은 날·같은 이름의 여행을 구분하도록 출발 시각을 앞에 붙임
+            costSummary = if (section == HistorySection.LEGACY) null else Formatters.startTime(startedAtMillis) + " · " + (if (costCount == 0) "비용 없음" else "비용 ${costCount}건 · 정산 포함 ${includedCount}건"),
             source = Formatters.source(source),
         )
     }

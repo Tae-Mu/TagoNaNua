@@ -58,12 +58,12 @@ fun HistoryRoute(
             }
         },
     )
-    state.deleteTarget?.let { target -> androidx.compose.material3.AlertDialog(
+    state.deleteTarget?.let { target -> com.gatita.core.ui.component.VehicleAlertDialog(
         onDismissRequest=viewModel::dismissDelete,
         title={Text("목록에서 삭제할까요?")},
         text={Column {Text("‘${target.title}’을 여행 내역과 정산 목록에서 제외해요. 확정된 정산 원본은 이 기기에 보관돼요.");state.deleteError?.let { ErrorMessage(it) }}},
-        confirmButton={androidx.compose.material3.TextButton(viewModel::confirmDelete,enabled=!state.deleting){Text(if(state.deleting)"처리 중…" else "목록에서 삭제")}},
-        dismissButton={androidx.compose.material3.TextButton(viewModel::dismissDelete,enabled=!state.deleting){Text("취소")}}
+        confirmButton={com.gatita.core.ui.component.Action(if(state.deleting)"처리 중…" else "목록에서 삭제",enabled=!state.deleting,modifier=Modifier.weight(1f),onClick=viewModel::confirmDelete)},
+        dismissButton={com.gatita.core.ui.component.Action("취소",primary=false,enabled=!state.deleting,modifier=Modifier.weight(1f),onClick=viewModel::dismissDelete)}
     ) }
 }
 
@@ -113,10 +113,17 @@ fun HistoryContent(
             state.isLoading -> LoadingBlock("내역을 불러오는 중")
             else -> {
                 if (state.rows.isEmpty()) {
-                    EmptyBlock(
-                        "이 달에 표시할 여행이 없습니다",
-                        "여행을 기록하고 정산을 확정하면 이곳에 쌓입니다. 다른 달이나 필터도 확인해 보세요.",
-                    )
+                    // [목적] 여행 내역 빈 상태 (필터별 문구)
+                    // [이유] '정산 전' 필터에서 결과가 없을 때도 '이 달에 여행이 없습니다'라고 나와 실제 상황과 달랐음
+                    // [사이드 임팩트] 없음 (표시만 변경)
+                    // [수정 시 고려사항] HistoryFilter 값이 늘면 문구도 추가할 것
+                    val (emptyTitle, emptyBody) = when (state.filter) {
+                        com.gatita.domain.model.HistoryFilter.PENDING -> "이 달에 정산 전인 여행이 없어요" to "마친 여행은 모두 정산을 확정했어요."
+                        com.gatita.domain.model.HistoryFilter.SETTLED -> "이 달에 확정한 정산이 없어요" to "여행을 마치고 정산을 확정하면 여기에 쌓여요."
+                        else -> "이 달에 기록한 여행이 없어요" to "여행을 기록하면 여기에 쌓여요. 다른 달도 확인해 보세요."
+                    }
+                    // ponytail: 빈 화면에는 두리번거리며 기다리는 마스코트를 곁들임 (필터를 바꿔도 다시 재생하지 않음)
+                    EmptyBlock(emptyTitle, emptyBody) { com.gatita.feature.launch.JourneyMascot(Modifier.size(210.dp),com.gatita.R.drawable.tago_empty_wait) }
                 } else {
                     listOf(state.rows.filter { it.section!=HistorySection.LEGACY }, state.rows.filter { it.section==HistorySection.LEGACY }).filter { it.isNotEmpty() }.forEach { group ->
                     if(group.first().section==HistorySection.LEGACY) SectionTitle(HistorySection.LEGACY.title)
@@ -153,16 +160,27 @@ private fun MonthBar(month: YearMonth, onPrevious: () -> Unit, onNext: () -> Uni
 private fun HistoryCard(row: HistoryRow, onOpen: (HistoryRow) -> Unit, onDelete: ((HistoryRow)->Unit)?) {
     Column(Modifier.fillMaxWidth().clickable(role=Role.Button,onClickLabel="${row.title} 열기"){onOpen(row)}.padding(horizontal=24.dp,vertical=20.dp)) {
         Row(Modifier.heightIn(min=76.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(22.dp)) {
-            Column {Text(row.date.takeLast(2).toIntOrNull()?.toString()?:row.date.takeLast(2),fontSize=28.sp);Note("${row.date.substringAfter("-").substringBefore("-").toIntOrNull()?:""}월")}
+            // [목적] 여행 날짜 블록 (월 위, 일 크게)
+            // [이유] '11 / 11월'처럼 일과 월이 같으면 어느 쪽이 날짜인지 모호해 '일' 단위를 붙임
+            // [사이드 임팩트] 없음 (표시만 변경)
+            // [수정 시 고려사항] row.date는 yyyy-MM-dd 문자열 전제
+            Column {Note("${row.date.substringAfter("-").substringBefore("-").toIntOrNull()?:""}월");AmountLabel(row.date.takeLast(2).toIntOrNull()?.toString()?:row.date.takeLast(2),"일",28)}
             androidx.compose.material3.VerticalDivider(Modifier.height(56.dp),color=MaterialTheme.colorScheme.outlineVariant)
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(row.title,fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold);Note(listOfNotNull(row.distance,row.costSummary).joinToString(" · "))}
             Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 row.amount?.let { AmountLabel(it.removeSuffix("원"),"원",26) }
-                androidx.compose.material3.Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=androidx.compose.foundation.shape.RoundedCornerShape(6.dp)) { Text(row.statusLabel,Modifier.padding(horizontal=8.dp,vertical=4.dp),fontSize=12.sp,color=MaterialTheme.colorScheme.primary) }
+                androidx.compose.material3.Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=androidx.compose.foundation.shape.RoundedCornerShape(6.dp)) { Text(row.statusLabel,Modifier.padding(horizontal=8.dp,vertical=4.dp),fontSize=15.sp,color=MaterialTheme.colorScheme.primary) }
                 if(row.section==HistorySection.LEGACY) row.amountCaption?.let{Note(it)}
             }
             ChevronRight()
-            if(onDelete!=null && row.status!=TripStatus.IN_PROGRESS) androidx.compose.material3.TextButton({onDelete(row)}) {Text("목록 삭제")}
+            // [목적] 여행 내역 행의 '목록 삭제' 버튼
+            // [이유] 화살표 바로 옆 작은 글자 링크라 행을 열려다 잘못 누르기 쉬워, 구분선으로 떼고 보조 버튼 크기로 키움
+            // [사이드 임팩트] 행 오른쪽 폭이 늘어남
+            // [수정 시 고려사항] 삭제는 확인 대화상자를 거침
+            if(onDelete!=null && row.status!=TripStatus.IN_PROGRESS) {
+                androidx.compose.material3.VerticalDivider(Modifier.height(56.dp),color=MaterialTheme.colorScheme.outlineVariant)
+                com.gatita.core.ui.component.Action("목록 삭제",primary=false,textSize=16,horizontalPadding=18){onDelete(row)}
+            }
         }
     }
 }

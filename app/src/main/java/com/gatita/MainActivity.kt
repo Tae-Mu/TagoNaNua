@@ -22,6 +22,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = (application as GatitaApplication).container
         setContent {
+            com.gatita.core.ui.component.VehicleViewport {
             var showLaunch by remember { mutableStateOf(savedInstanceState == null) }
             Box(Modifier.fillMaxSize()) {
                 Box(if (showLaunch) Modifier.clearAndSetSemantics {} else Modifier) { AppNavHost(container) }
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
                         LaunchScreen { showLaunch=false }
                     }
                 }
+            }
             }
         }
     }

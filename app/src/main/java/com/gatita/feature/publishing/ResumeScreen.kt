@@ -20,7 +20,7 @@ import com.gatita.core.ui.theme.*
  Panel(Modifier.fillMaxWidth()) {
   Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-    Text("Ⅱ  이어갈 수 있는 여행",color=Blue,fontSize=12.sp)
+    Text("Ⅱ  이어갈 수 있는 여행",color=Blue,fontSize=15.sp)
     Text(name,fontSize=28.sp,fontWeight=FontWeight.Bold)
     Note("함께 타는 ${people}명")
    }
@@ -29,7 +29,7 @@ import com.gatita.core.ui.theme.*
   Surface(color=Navy,shape=RoundedCornerShape(18.dp),modifier=Modifier.fillMaxWidth()){
    Row(Modifier.padding(20.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(32.dp)){
     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(12.dp)){
-     Text("함께 이동한 거리",color=androidx.compose.ui.graphics.Color(0xFFC5D9E8),fontSize=13.sp)
+     Text("함께 이동한 거리",color=androidx.compose.ui.graphics.Color(0xFFC5D9E8),fontSize=15.sp)
      Row(verticalAlignment=Alignment.Bottom){Text("30.0",fontSize=40.sp,color=Color.White);Text(" km",color=androidx.compose.ui.graphics.Color(0xFFC5D9E8),modifier=Modifier.padding(bottom=8.dp))}
     }
     VerticalDivider(Modifier.height(68.dp),color=Tint.copy(alpha=.2f))
@@ -43,7 +43,7 @@ import com.gatita.core.ui.theme.*
   }
   HorizontalDivider(color=Line)
   Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-   Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){Text("✓  여기까지 기록했어요",fontSize=14.sp);Note("저장 상태 시안 · 실제 기록 저장 없음")}
+   Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){Text("✓  여기까지 기록했어요",fontSize=16.sp);Note("저장 상태 시안 · 실제 기록 저장 없음")}
    Action("여행 이어가기",modifier=Modifier.widthIn(min=230.dp),arrow=true){go(Page.Trip)}
   }
  }

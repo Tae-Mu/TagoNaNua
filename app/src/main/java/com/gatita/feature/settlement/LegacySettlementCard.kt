@@ -49,5 +49,5 @@ fun LegacySettlementCard(view: SettlementView) {
             Text(line.detail, style = MaterialTheme.typography.bodyMedium)
         }
     }
-    Text(view.roundingNote, style = MaterialTheme.typography.bodySmall)
+    com.gatita.core.ui.component.Note(view.roundingNote)
 }

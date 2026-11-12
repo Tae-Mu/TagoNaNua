@@ -141,9 +141,9 @@ class SettlementViewModel(
     fun onDriverNameChange(text: String) {
         val trimmed = text.trim()
         val error = when {
-            trimmed.any(Char::isISOControl) -> "사용할 수 없는 문자가 있습니다."
+            trimmed.any(Char::isISOControl) -> "사용할 수 없는 문자가 있어요."
             trimmed.codePointCount(0, trimmed.length) > CostLimits.DISPLAY_NAME_MAX_LENGTH ->
-                "표시 이름은 ${CostLimits.DISPLAY_NAME_MAX_LENGTH}자 이하로 입력하세요."
+                "표시 이름은 ${CostLimits.DISPLAY_NAME_MAX_LENGTH}자 이하로 입력해 주세요."
             else -> null
         }
         _state.update {

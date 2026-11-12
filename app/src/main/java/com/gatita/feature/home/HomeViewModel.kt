@@ -121,7 +121,7 @@ class HomeViewModel(
         val nameError = if (current.nameInput.trim().codePointCount(0, current.nameInput.trim().length) >
             CostLimits.TRIP_NAME_MAX_LENGTH
         ) {
-            "여행 이름은 ${CostLimits.TRIP_NAME_MAX_LENGTH}자 이하로 입력하세요."
+            "여행 이름은 ${CostLimits.TRIP_NAME_MAX_LENGTH}자 이하로 입력해 주세요."
         } else {
             null
         }
@@ -162,7 +162,7 @@ class HomeViewModel(
                                 _state.update { it.copy(nameError = code.userMessage()) }
 
                             code == ErrorCode.ACTIVE_TRIP_EXISTS -> _state.update {
-                                it.copy(startError = "이미 기록 중인 여행이 있습니다. '기록 중인 여행'에서 이어가세요.")
+                                it.copy(startError = "이미 기록 중인 여행이 있어요. '기록 중인 여행'에서 이어가 주세요.")
                             }
 
                             else -> _state.update { it.copy(startError = code.userMessage()) }
