@@ -28,3 +28,8 @@ Kotlin 앱은 JUnit 기반 단위 테스트, Room 기기 테스트, Compose UI �
 기존 테스트 스위트는 실행하지 않았다. UI 연결 작업 중 `assembleDebug`·`lintDebug` 및 TAGO_Tablet(emulator-5556)의 실제 탭/입력/스크롤/프로세스 재실행으로 검수했다. 초기 기능 구현 당시의 "Lint·수동 QA 미실행" 문구는 당시 기록이며 최신 범위는 [퍼블리싱 연결 검수](publishing-integration-2026-11-09.md)를 따른다. 마이그레이션·실차·QR 휴대폰 리더 검증은 여전히 별도다.
 
 이전 절의 “기존 테스트 스위트 미실행”은 최초 연결 작업 당시 기록이다. 후속 전체 연결 검수에서 실행 완료했다.
+
+
+## 2026-11-12 구간별 유류비 계산기
+
+`FuelSettlementCalculatorTest`(16건)·`FuelTrackingCalculatorTest`(15건: 구간 구성·정차 판정·플래너)·`FuelTrackingUseCasesTest`(8건: 측정 기록·주유 감지·종료 조건·보정)와 기존 순수 계산·유스케이스 테스트(`SettlementCalculatorTest`, `ShareAllocatorTest`, `PaymentEdgeCasesTest`, `TripAndSettlementUseCasesTest`, `PleosValueMapperTest`, 합계 117건)를 Android SDK 없이 별도 JVM 프로젝트(JDK 21, Kotlin 2.0.21, JUnit 4.13.2)로 컴파일해 전부 통과시켰다. 이 프로젝트는 저장소 밖 임시 폴더에서 `domain` 전체와 `PleosValueMapper.kt`만 포함했으며 저장소에는 두지 않았다. `:app` 모듈 전체(Room·Compose·ViewModel) 빌드·JUnit·Lint·기기 테스트는 이번에도 실행하지 못했다. 같은 날 삭제한 수동 구간 저장 테스트와 `EfficiencyUnit.KM_PER_KWH` 추가가 `:app`에 미치는 영향은 컴파일로 확인하지 못했다.

@@ -50,6 +50,8 @@ fun Trip.toEntity(): TripEntity = TripEntity(
     revision = revision,
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
+    calculationVersion = calculationVersion,
+    manualFuelUnitPrice = manualFuelUnitPrice?.text(),
 )
 
 fun TripEntity.toDomain(): Trip = Trip(
@@ -69,6 +71,8 @@ fun TripEntity.toDomain(): Trip = Trip(
     revision = revision,
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
+    calculationVersion = calculationVersion,
+    manualFuelUnitPrice = manualFuelUnitPrice?.decimal(),
 )
 
 const val ACTIVE_SLOT = 1

@@ -1,5 +1,6 @@
 package com.gatita.domain.calculator
 
+import com.gatita.domain.model.FUEL_SEGMENTS_CALCULATION_VERSION
 import com.gatita.domain.model.PaymentSettlement
 import java.util.Locale
 
@@ -14,7 +15,8 @@ object PaymentSummaryFormatter {
     fun format(settlement: PaymentSettlement): String = buildString {
         appendLine("[TAGO 정산 요약]")
         appendLine("여행: ${settlement.tripName} (${settlement.tripDate})")
-        appendLine("총 결제액: ${won(settlement.totalWon)} (주유 ${won(settlement.fuelTotalWon)} · 기타 ${won(settlement.otherTotalWon)})")
+        val label = if (settlement.calculationVersion == FUEL_SEGMENTS_CALCULATION_VERSION) "총 정산액" else "총 결제액"
+        appendLine("$label: ${won(settlement.totalWon)} (주유 ${won(settlement.fuelTotalWon)} · 기타 ${won(settlement.otherTotalWon)})")
         appendLine(
             "인원: ${settlement.people}명" + if (settlement.includeDriver) "" else " (운전자 제외, ${settlement.splitPeople}명이 분담)",
         )

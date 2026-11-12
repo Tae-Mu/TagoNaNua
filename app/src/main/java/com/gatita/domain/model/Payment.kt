@@ -54,6 +54,8 @@ data class Cost(
     val included: Boolean,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
+    /** FUEL만 의미가 있다. true면 "감지 안 됨"으로 표시해 주유 이벤트 순서 짝짓기와 단가 산정에서 제외한다. */
+    val undetected: Boolean = false,
 ) {
     /** 표시용 주유량(L, 소수 3자리 HALF_UP). 정산 금액에는 쓰이지 않는다. FUEL이 아니면 null. */
     val fuelLiters: BigDecimal? get() = FuelLiters.calculate(kind, amountWonDecimal(), unitPriceWonPerLiter)
@@ -144,6 +146,8 @@ data class PaymentPreview(
     /** [canConfirm]이 false인 이유: [ErrorCode.TRIP_NOT_FINISHED] 또는 [ErrorCode.NO_INCLUDED_COSTS]. */
     val blockingReason: ErrorCode?,
     val recording: RecordingMetadata,
+    /** [FUEL_SEGMENTS_CALCULATION_VERSION] 여행의 구간별 유류비 계산 결과. 결제액 방식이면 null. */
+    val fuel: FuelSettlementResult? = null,
 )
 
 /** 확정 당시 비용의 복사본. 제외된 비용([included]=false)도 보존한다. [originalCostId]는 추적용이며 FK가 아니다. */
@@ -181,6 +185,8 @@ data class PaymentSettlement(
     val confirmedAtMillis: Long,
     val costs: List<PaymentSettlementCost>,
     val shares: List<PaymentShare>,
+    /** [FUEL_SEGMENTS_CALCULATION_VERSION] 정산의 주유 구간별 계산 결과(확정 당시 고정). 결제액 방식이면 비어 있다. */
+    val fuelIntervals: List<FuelIntervalResult> = emptyList(),
 )
 
 /** 정산 기록의 종류. 옛 추정 방식은 [Legacy]로 구분해 보여줘야 한다. */

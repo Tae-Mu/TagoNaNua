@@ -29,7 +29,6 @@ import com.gatita.core.ui.component.SecondaryButton
 import com.gatita.core.ui.component.SectionTitle
 import com.gatita.core.ui.component.SourceLabel
 import com.gatita.domain.model.Cost
-import com.gatita.domain.model.EfficiencyUnit
 import com.gatita.domain.model.TripStatus
 import com.gatita.feature.common.Formatters
 
@@ -88,6 +87,8 @@ fun TripRoute(
         onOpenSettlement = { state.trip?.let { onOpenSettlement(it.id) } },
         onOpenResult = { state.trip?.let { onOpenResult(it.id) } },
         onPauseChange = viewModel::changePaused,
+        onRefuelDismissedChange = viewModel::setRefuelDismissed,
+        onUndetectedChange = viewModel::setUndetected,
     )
 }
 
@@ -111,6 +112,8 @@ fun TripContent(
     onOpenSettlement: () -> Unit,
     onOpenResult: () -> Unit,
     onPauseChange: (Boolean) -> Unit = {},
+    onRefuelDismissedChange: (com.gatita.domain.model.RefuelEvent, Boolean) -> Unit = { _, _ -> },
+    onUndetectedChange: (Cost, Boolean) -> Unit = { _, _ -> },
 ) {
     var showCosts by rememberSaveable { mutableStateOf(false) }
     GatitaScaffold(title = if(showCosts)"이번 여행 비용" else if(state.pausedAt!=null) "잠시 멈춘 여행" else state.trip?.name?:"여행 기록",
@@ -125,10 +128,14 @@ fun TripContent(
                 EmptyBlock("여행을 찾을 수 없습니다", "삭제되었거나 저장되지 않은 여행입니다. 홈으로 돌아가세요.")
 
             else -> {
-                val busy=state.isChangingPause||state.isMutating||state.isCompleting||state.isDiscarding||state.isSavingSegment
+                val busy=state.isChangingPause||state.isMutating||state.isCompleting||state.isDiscarding
                 state.pauseError?.let { ErrorMessage(it) }
                 if(showCosts) {
-                    CostLedgerSection(ledger,busy,onIncludedChange,onEditCost,onRequestDelete,onAddCost)
+                    CostLedgerSection(
+                        ledger,busy,onIncludedChange,onEditCost,onRequestDelete,onAddCost,
+                        fuelSegments=trip.calculationVersion==com.gatita.domain.model.FUEL_SEGMENTS_CALCULATION_VERSION,
+                        refuels=state.refuels,onRefuelDismissedChange=onRefuelDismissedChange,onUndetectedChange=onUndetectedChange,
+                    )
                 } else if(trip.status==TripStatus.IN_PROGRESS && state.pausedAt!=null) {
                     PausedTripCard(state,busy,{onPauseChange(false)},onAddCost,{showCosts=true},onRequestComplete)
                 } else {
@@ -345,7 +352,7 @@ private fun DiscardSection(state: TripUiState, onRequestDiscard: () -> Unit) {
     SecondaryButton(
         text = if (state.isDiscarding) "닫는 중…" else "빈 여행 닫기",
         onClick = onRequestDiscard,
-        enabled = !state.isDiscarding && !state.isCompleting && !state.isSavingSegment && !state.isMutating,
+        enabled = !state.isDiscarding && !state.isCompleting && !state.isMutating,
     )
 }
 @Composable

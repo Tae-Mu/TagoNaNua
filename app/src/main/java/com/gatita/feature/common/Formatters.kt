@@ -42,6 +42,7 @@ object Formatters {
     fun unitLabel(unit: EfficiencyUnit): String = when (unit) {
         EfficiencyUnit.KM_PER_LITER -> "km/L"
         EfficiencyUnit.LITERS_PER_100_KM -> "L/100km"
+        EfficiencyUnit.KM_PER_KWH -> "km/kWh"
     }
 
     fun scopeLabel(scope: EfficiencyScope): String = when (scope) {

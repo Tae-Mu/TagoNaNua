@@ -53,6 +53,10 @@ enum class ErrorCode {
     /** 구간·비용·기록 거리가 있어 빈 여행으로 닫을 수 없다. */
     TRIP_NOT_EMPTY,
     SETTLEMENT_NOT_FOUND,
+
+    // ---- 구간별 유류비 방식(fuel-segments-v2) ----
+    /** 감지된 주유 이벤트 수와 짝짓기 대상 FUEL 비용 수가 다르다. 여행을 종료할 수 없다. */
+    REFUEL_COST_MISMATCH,
 }
 
 /**

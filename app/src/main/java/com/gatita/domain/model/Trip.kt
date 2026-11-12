@@ -48,6 +48,10 @@ data class Trip(
     val revision: Long = 0,
     val createdAtMillis: Long = 0,
     val updatedAtMillis: Long = 0,
+    /** 이 여행의 정산 방식. 새 여행은 [FUEL_SEGMENTS_CALCULATION_VERSION], 기존 여행은 [PAYMENTS_CALCULATION_VERSION]이다. */
+    val calculationVersion: String = PAYMENTS_CALCULATION_VERSION,
+    /** 주유가 없는 여행에서 사용자가 직접 입력한 L당 단가. 없으면 유류비를 포함하지 않는다. */
+    val manualFuelUnitPrice: BigDecimal? = null,
 )
 
 /**

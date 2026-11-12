@@ -3,7 +3,15 @@ package com.gatita.domain.model
 import java.math.BigDecimal
 
 /** 연비 원본 단위. 차량이 어떤 단위를 주는지는 미확인이므로 변환하지 않고 원본 단위를 보존한다. */
-enum class EfficiencyUnit { KM_PER_LITER, LITERS_PER_100_KM }
+enum class EfficiencyUnit {
+    KM_PER_LITER,
+
+    /** Pleos `Fuel` 연비 API의 단위(SDK 2.3.2 KDoc). */
+    LITERS_PER_100_KM,
+
+    /** Pleos `EvBattery` 효율 API의 단위(SDK 2.3.2 KDoc). 이 단위의 "연료량"은 L가 아니라 kWh다. */
+    KM_PER_KWH,
+}
 
 /**
  * 연비 값이 무엇의 평균인지.
@@ -52,10 +60,12 @@ object EfficiencyMath {
         return null
     }
 
-    /** 거리 [distanceKm]를 이 연비로 주행했을 때의 연료량(L). 반올림하지 않는다. */
+    /** 거리 [distanceKm]를 이 연비로 주행했을 때의 연료량(L). [EfficiencyUnit.KM_PER_KWH]이면 전력량(kWh). 반올림하지 않는다. */
     fun fuelLiters(distanceKm: BigDecimal, reading: EfficiencyReading): BigDecimal =
         when (reading.unit) {
-            EfficiencyUnit.KM_PER_LITER -> distanceKm.divide(reading.value, Decimals.CALCULATION_CONTEXT)
+            EfficiencyUnit.KM_PER_LITER,
+            EfficiencyUnit.KM_PER_KWH,
+            -> distanceKm.divide(reading.value, Decimals.CALCULATION_CONTEXT)
             EfficiencyUnit.LITERS_PER_100_KM -> distanceKm.multiply(reading.value).movePointLeft(2)
         }
 

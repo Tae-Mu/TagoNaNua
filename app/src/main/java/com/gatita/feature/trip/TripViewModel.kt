@@ -8,16 +8,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.gatita.di.AppContainer
 import com.gatita.domain.model.Cost
+import com.gatita.domain.model.FUEL_SEGMENTS_CALCULATION_VERSION
 import com.gatita.domain.model.CostLedger
 import com.gatita.domain.model.DomainResult
-import com.gatita.domain.model.EfficiencyReading
-import com.gatita.domain.model.EfficiencyScope
-import com.gatita.domain.model.EfficiencyUnit
 import com.gatita.domain.model.ErrorCode
+import com.gatita.domain.model.RefuelEvent
 import com.gatita.domain.model.Segment
 import com.gatita.domain.model.Trip
 import com.gatita.domain.model.TripStatus
-import com.gatita.domain.model.VehicleSource
 import com.gatita.domain.repository.TripLedgerRepository
 import com.gatita.domain.repository.TripRepository
 import com.gatita.domain.usecase.CompleteTripCommand
@@ -25,14 +23,15 @@ import com.gatita.domain.usecase.CompleteTripUseCase
 import com.gatita.domain.usecase.DeleteCostUseCase
 import com.gatita.domain.usecase.DiscardEmptyTripUseCase
 import com.gatita.domain.usecase.ObserveCostLedgerUseCase
-import com.gatita.domain.usecase.SaveSegmentCommand
-import com.gatita.domain.usecase.SaveSegmentUseCase
+import com.gatita.domain.usecase.ObserveFuelProgressUseCase
+import com.gatita.domain.usecase.ObserveRefuelsUseCase
+import com.gatita.domain.usecase.SetCostUndetectedUseCase
+import com.gatita.domain.usecase.SetRefuelDismissedUseCase
+import com.gatita.domain.usecase.TakeEndSnapshotUseCase
 import com.gatita.domain.usecase.SetCostIncludedUseCase
 import com.gatita.feature.common.AttemptStore
 import com.gatita.feature.common.Formatters
-import com.gatita.feature.common.InputParsers
 import com.gatita.feature.common.LOAD_FAILURE_MESSAGE
-import com.gatita.feature.common.ParsedNumber
 import com.gatita.feature.common.SavedStateAttemptStore
 import com.gatita.feature.common.SubmitGuard
 import com.gatita.feature.common.UNEXPECTED_FAILURE_MESSAGE
@@ -50,7 +49,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
-import java.util.UUID
 
 data class SegmentRow(
     val seq: Int,
@@ -71,6 +69,11 @@ data class TripUiState(
     val trip: Trip? = null,
     val ledger: CostLedger? = null,
     val segments: List<SegmentRow> = emptyList(),
+    /** 구간별 유류비 여행의 측정 기반 이동 거리·시간(구간 기록이 없을 때의 표시 값). */
+    val measuredDistance: String? = null,
+    val measuredMinutes: Long? = null,
+    /** 감지된 주유(제외한 것 포함). 구간별 유류비 방식 여행에서만 쓴다. */
+    val refuels: List<RefuelEvent> = emptyList(),
     val lastRecordedKm: String? = null,
     val recordedDistance: String? = null,
     val recordedMinutes: Long? = null,
@@ -81,14 +84,6 @@ data class TripUiState(
     /** 삭제 확인 창의 대상. */
     val deleteTarget: Cost? = null,
 
-    val endOdometerInput: String = "",
-    val efficiencyInput: String = "",
-    val efficiencyUnit: EfficiencyUnit = EfficiencyUnit.KM_PER_LITER,
-    val endOdometerError: String? = null,
-    val efficiencyError: String? = null,
-    val isSavingSegment: Boolean = false,
-    val segmentError: String? = null,
-    val segmentNotice: String? = null,
 
     val showCompleteConfirm: Boolean = false,
     val isCompleting: Boolean = false,
@@ -113,13 +108,17 @@ class TripViewModel(
     private val observeCostLedger: ObserveCostLedgerUseCase,
     private val setCostIncluded: SetCostIncludedUseCase,
     private val deleteCost: DeleteCostUseCase,
-    private val saveSegmentUseCase: SaveSegmentUseCase,
     private val completeTripUseCase: CompleteTripUseCase,
     private val discardEmptyTripUseCase: DiscardEmptyTripUseCase,
     private val clock: Clock,
     private val attempts: AttemptStore,
     private val sessions: com.gatita.domain.repository.TripSessionRepository? = null,
     private val setPaused: com.gatita.domain.usecase.SetTripPausedUseCase? = null,
+    private val observeRefuels: ObserveRefuelsUseCase? = null,
+    private val setRefuelDismissed: SetRefuelDismissedUseCase? = null,
+    private val setCostUndetected: SetCostUndetectedUseCase? = null,
+    private val takeEndSnapshot: TakeEndSnapshotUseCase? = null,
+    private val observeFuelProgress: ObserveFuelProgressUseCase? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(TripUiState())
     val state: StateFlow<TripUiState> = _state.asStateFlow()
@@ -128,13 +127,38 @@ class TripViewModel(
     val events: Flow<TripEvent> = _events.receiveAsFlow()
 
     private val mutateGuard = SubmitGuard()
-    private val segmentGuard = SubmitGuard()
     private val completeGuard = SubmitGuard()
     private val discardGuard = SubmitGuard()
     private var observeJob: Job? = null
 
     init {
         observe()
+        observeFuelProgress?.let { observeUseCase ->
+            viewModelScope.launch {
+                observeUseCase(tripId)
+                    .catch { /* 거리 표시만 못 갱신한다. 기록은 그대로다. */ }
+                    .collect { progress ->
+                        _state.update {
+                            val distance = progress?.distanceKm?.let(Formatters::km)
+                            val minutes = progress?.let { p -> p.elapsedMillis / 60000 }
+                            it.copy(
+                                measuredDistance = distance,
+                                measuredMinutes = minutes,
+                                // 구간 기록이 있으면 그 값을 우선한다.
+                                recordedDistance = if (it.segments.isEmpty()) distance else it.recordedDistance,
+                                recordedMinutes = if (it.segments.isEmpty()) minutes else it.recordedMinutes,
+                            )
+                        }
+                    }
+            }
+        }
+        observeRefuels?.let { observeUseCase ->
+            viewModelScope.launch {
+                observeUseCase(tripId)
+                    .catch { _state.update { it.copy(costError = LOAD_FAILURE_MESSAGE) } }
+                    .collect { list -> _state.update { it.copy(refuels = list) } }
+            }
+        }
         sessions?.let { repo -> viewModelScope.launch {
             repo.observePausedAt(tripId).catch { _state.update { it.copy(pauseError="일시정지 상태를 불러오지 못했어요.") } }
                 .collect { at -> _state.update { it.copy(pausedAt=at) } }
@@ -143,7 +167,7 @@ class TripViewModel(
 
     fun changePaused(paused: Boolean) {
         val action=setPaused ?: return
-        if(_state.value.isChangingPause || _state.value.isSavingSegment || _state.value.isCompleting) return
+        if(_state.value.isChangingPause || _state.value.isCompleting) return
         _state.update { it.copy(isChangingPause=true,pauseError=null) }
         viewModelScope.launch {
             try { when(val result=action(tripId,paused)) {
@@ -193,8 +217,8 @@ class TripViewModel(
                 trip = trip,
                 ledger = ledger.value,
                 segments = segments.map(::toRow),
-                recordedDistance = segments.takeIf { it.isNotEmpty() }?.sumOf { it.distanceKm }?.let(Formatters::km),
-                recordedMinutes = segments.takeIf { it.isNotEmpty() }?.sumOf { (it.endedAtMillis-it.startedAtMillis).coerceAtLeast(0) }?.div(60000),
+                recordedDistance = segments.takeIf { it.isNotEmpty() }?.sumOf { it.distanceKm }?.let(Formatters::km) ?: it.measuredDistance,
+                recordedMinutes = segments.takeIf { it.isNotEmpty() }?.sumOf { (it.endedAtMillis-it.startedAtMillis).coerceAtLeast(0) }?.div(60000) ?: it.measuredMinutes,
                 lastRecordedKm = segments.maxByOrNull { s -> s.seq }?.endOdometerKm?.let(Formatters::km),
             )
         }
@@ -238,6 +262,38 @@ class TripViewModel(
         }
     }
 
+    /** 감지된 주유를 "주유 아님"으로 제외하거나 되돌린다. 제외하면 구간이 합쳐지고 짝짓기에서 빠진다. */
+    fun setRefuelDismissed(event: RefuelEvent, dismissed: Boolean) {
+        val action = setRefuelDismissed ?: return
+        runMutation { action(tripId, event.id, dismissed) }
+    }
+
+    /** FUEL 비용을 "감지 안 됨"(앱이 감지하지 못한 주유)으로 표시하거나 되돌린다. */
+    fun setUndetected(cost: Cost, undetected: Boolean) {
+        val action = setCostUndetected ?: return
+        runMutation { action(tripId, cost.id, undetected) }
+    }
+
+    private fun runMutation(block: suspend () -> DomainResult<Unit>) {
+        if (!mutateGuard.tryAcquire()) return
+        _state.update { it.copy(isMutating = true, costError = null) }
+        viewModelScope.launch {
+            try {
+                when (val result = block()) {
+                    is DomainResult.Success -> Unit
+                    is DomainResult.Failure -> _state.update { it.copy(costError = result.error.code.userMessage()) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(costError = UNEXPECTED_FAILURE_MESSAGE) }
+            } finally {
+                _state.update { it.copy(isMutating = false) }
+                mutateGuard.release()
+            }
+        }
+    }
+
     fun requestDelete(cost: Cost) = _state.update { it.copy(deleteTarget = cost, costError = null) }
 
     fun dismissDelete() = _state.update { it.copy(deleteTarget = null) }
@@ -263,125 +319,6 @@ class TripViewModel(
         }
     }
 
-    // ---- 구간 기록(선택). 정산 금액과 무관한 기록이다. ----
-
-    fun onEndOdometerChange(text: String) =
-        _state.update { it.copy(endOdometerInput = text, endOdometerError = null, segmentError = null) }
-
-    fun onEfficiencyChange(text: String) =
-        _state.update { it.copy(efficiencyInput = text, efficiencyError = null, segmentError = null) }
-
-    fun onEfficiencyUnitChange(unit: EfficiencyUnit) =
-        _state.update { it.copy(efficiencyUnit = unit, efficiencyError = null, segmentError = null) }
-
-    fun saveSegment() {
-        val current = _state.value
-        val trip = current.trip ?: return
-        if (trip.status != TripStatus.IN_PROGRESS || current.pausedAt != null || current.isChangingPause) return
-        if (!segmentGuard.tryAcquire()) return
-
-        val end = InputParsers.odometerKm(current.endOdometerInput, "구간 종료 주행거리")
-        // 연비는 선택 사항이다. 비워 두면 "미기록"으로 저장하고 0으로 바꾸지 않는다.
-        val efficiencyParsed: ParsedNumber? = if (current.efficiencyInput.isBlank()) {
-            null
-        } else {
-            InputParsers.efficiency(current.efficiencyInput, "구간 연비")
-        }
-        val endError = (end as? ParsedNumber.Invalid)?.message
-        val efficiencyError = (efficiencyParsed as? ParsedNumber.Invalid)?.message
-        if (endError != null || efficiencyError != null) {
-            _state.update { it.copy(endOdometerError = endError, efficiencyError = efficiencyError) }
-            segmentGuard.release()
-            return
-        }
-        val endKm = (end as ParsedNumber.Ok).value
-        val efficiency = (efficiencyParsed as? ParsedNumber.Ok)?.let {
-            EfficiencyReading(it.value, current.efficiencyUnit, EfficiencyScope.SEGMENT_AVERAGE)
-        }
-
-        // 같은 시도의 재전송이 같은 이벤트 ID·시각을 쓰도록 먼저 저장해 둔다.
-        val eventId = attempts.get(KEY_SEGMENT_EVENT) ?: UUID.randomUUID().toString().also {
-            attempts.put(KEY_SEGMENT_EVENT, it)
-        }
-        val atMillis = attempts.get(KEY_SEGMENT_AT)?.toLongOrNull() ?: clock.millis().also {
-            attempts.put(KEY_SEGMENT_AT, it.toString())
-        }
-
-        _state.update { it.copy(isSavingSegment = true, segmentError = null, segmentNotice = null) }
-        viewModelScope.launch {
-            try {
-                val command = SaveSegmentCommand(
-                    tripId = tripId,
-                    eventId = eventId,
-                    endOdometerKm = endKm,
-                    endedAtMillis = atMillis,
-                    efficiency = efficiency,
-                    source = VehicleSource.MANUAL,
-                )
-                when (val result = saveSegmentUseCase(command)) {
-                    is DomainResult.Success -> {
-                        clearSegmentAttempt()
-                        _state.update {
-                            it.copy(
-                                endOdometerInput = "",
-                                efficiencyInput = "",
-                                segmentNotice = "구간 ${result.value.seq}을(를) 저장했습니다.",
-                            )
-                        }
-                        // 구간은 여행 revision을 바꾸지 않을 수 있어 Flow 갱신에 기대지 않고 다시 읽는다.
-                        refreshSegments()
-                    }
-
-                    is DomainResult.Failure -> {
-                        // 도메인 실패는 아무것도 저장되지 않았다는 뜻이므로 다음 시도는 새 ID·시각을 쓴다.
-                        clearSegmentAttempt()
-                        _state.update {
-                            it.copy(
-                                segmentError = if (result.error.code == ErrorCode.SEGMENT_CONFLICT) {
-                                    "이전 시도가 다른 내용으로 저장되어 있을 수 있습니다. 위 구간 목록을 확인한 뒤 필요하면 다시 저장하세요."
-                                } else {
-                                    result.error.code.userMessage()
-                                },
-                            )
-                        }
-                        if (result.error.code == ErrorCode.SEGMENT_CONFLICT) refreshSegments()
-                    }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // 저장 여부가 불확실하다. ID와 시각을 유지해 같은 입력으로 다시 시도해도 중복 저장되지 않는다.
-                _state.update { it.copy(segmentError = UNEXPECTED_FAILURE_MESSAGE) }
-            } finally {
-                _state.update { it.copy(isSavingSegment = false) }
-                segmentGuard.release()
-            }
-        }
-    }
-
-    private suspend fun refreshSegments() {
-        try {
-            val segments = trips.getSegments(tripId)
-            _state.update {
-                it.copy(
-                    segments = segments.map(::toRow),
-                recordedDistance = segments.takeIf { it.isNotEmpty() }?.sumOf { it.distanceKm }?.let(Formatters::km),
-                recordedMinutes = segments.takeIf { it.isNotEmpty() }?.sumOf { (it.endedAtMillis-it.startedAtMillis).coerceAtLeast(0) }?.div(60000),
-                    lastRecordedKm = segments.maxByOrNull { s -> s.seq }?.endOdometerKm?.let(Formatters::km),
-                )
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            _state.update { it.copy(segmentError = LOAD_FAILURE_MESSAGE) }
-        }
-    }
-
-    private fun clearSegmentAttempt() {
-        attempts.put(KEY_SEGMENT_EVENT, null)
-        attempts.put(KEY_SEGMENT_AT, null)
-    }
-
     // ---- 여행 마치기. 거리 기록이 없는 0km 여행도 비용이 있으면 마칠 수 있다. ----
 
     fun requestComplete() {
@@ -400,8 +337,12 @@ class TripViewModel(
         _state.update { it.copy(showCompleteConfirm = false, isCompleting = true, completeError = null) }
         viewModelScope.launch {
             try {
-                // 종료 주행거리를 넘기지 않으면 마지막으로 기록된 값을 쓴다(거리 기록 없음 = 0km).
-                when (val result = completeTripUseCase(CompleteTripCommand(tripId, atMillis))) {
+                // 구간별 유류비 여행은 종료 직전 측정을 남기고 그 주행거리를 종료 값으로 쓴다. 읽지 못하면 마지막 기록 값이며 0으로 대신하지 않는다.
+                // 그 밖에는 종료 주행거리를 넘기지 않아 마지막으로 기록된 값을 쓴다(거리 기록 없음 = 0km).
+                val endOdometer = takeEndSnapshot?.takeIf {
+                    _state.value.trip?.calculationVersion == FUEL_SEGMENTS_CALCULATION_VERSION
+                }?.invoke(tripId)
+                when (val result = completeTripUseCase(CompleteTripCommand(tripId, atMillis, endOdometer))) {
                     is DomainResult.Success -> {
                         attempts.put(KEY_COMPLETE_AT, null)
                         _events.send(TripEvent.OpenSettlement(tripId))
@@ -464,8 +405,6 @@ class TripViewModel(
 
     companion object {
         const val ARG_TRIP_ID = "tripId"
-        private const val KEY_SEGMENT_EVENT = "segmentEventId"
-        private const val KEY_SEGMENT_AT = "segmentAtMillis"
         private const val KEY_COMPLETE_AT = "completeAtMillis"
 
         fun factory(container: AppContainer, activeTripId: Long? = null): ViewModelProvider.Factory = viewModelFactory {
@@ -478,13 +417,17 @@ class TripViewModel(
                     observeCostLedger = container.observeCostLedger,
                     setCostIncluded = container.setCostIncluded,
                     deleteCost = container.deleteCost,
-                    saveSegmentUseCase = container.saveSegment,
                     completeTripUseCase = container.completeTrip,
                     discardEmptyTripUseCase = container.discardEmptyTrip,
                     clock = container.clock,
                     attempts = SavedStateAttemptStore(handle),
                     sessions = container.tripSessionRepository,
                     setPaused = container.setTripPaused,
+                    observeRefuels = container.observeRefuels,
+                    setRefuelDismissed = container.setRefuelDismissed,
+                    setCostUndetected = container.setCostUndetected,
+                    takeEndSnapshot = container.takeEndSnapshot,
+                    observeFuelProgress = container.observeFuelProgress,
                 )
             }
         }

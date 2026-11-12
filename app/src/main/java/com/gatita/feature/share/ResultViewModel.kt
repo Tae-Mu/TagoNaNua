@@ -13,6 +13,8 @@ import com.gatita.di.AppContainer
 import com.gatita.domain.model.CostKind
 import com.gatita.domain.model.DomainResult
 import com.gatita.domain.model.ErrorCode
+import com.gatita.domain.model.FUEL_SEGMENTS_CALCULATION_VERSION
+import com.gatita.domain.model.FuelExclusion
 import com.gatita.domain.model.PaymentSettlement
 import com.gatita.domain.model.SettlementRecord
 import com.gatita.domain.usecase.BuildPaymentSummaryUseCase
@@ -54,6 +56,9 @@ data class PaymentResultView(
     val peopleLine: String,
     val shares: List<ShareLine>,
     val costs: List<CostLine>,
+    /** 구간별 유류비 정산의 구간 계산 근거(한 줄씩). 결제액 방식이면 비어 있다. */
+    val fuelIntervalLines: List<String> = emptyList(),
+    val fuelSegments: Boolean = false,
     val distance: String,
     val quality: String,
     val source: String,
@@ -175,6 +180,15 @@ class ResultViewModel(
                 },
                 included = cost.included,
             )
+        },
+        fuelSegments = s.calculationVersion == FUEL_SEGMENTS_CALCULATION_VERSION,
+        fuelIntervalLines = s.fuelIntervals.map { interval ->
+            val head = "구간 ${interval.ordinal + 1} · ${Formatters.km(interval.distanceKm)}"
+            when {
+                interval.exclusion == FuelExclusion.MEASUREMENT_MISSING -> "$head · 측정 없음, 제외"
+                interval.exclusion != null -> "$head · 단가 없음, 제외"
+                else -> "$head · 사용량 ${interval.usage?.let { Formatters.decimal(it, 2) }} × ${interval.unitPriceWonPerLiter?.let { Formatters.decimal(it, 2) }}원"
+            }
         },
         distance = s.recording.distanceKm?.let { Formatters.km(it) } ?: "기록 없음",
         quality = Formatters.quality(s.recording.quality),

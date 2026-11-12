@@ -42,6 +42,8 @@ data class CostEntity(
     @ColumnInfo(defaultValue = "1") val included: Boolean = true,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
+    /** FUEL만 의미가 있다. 앱이 감지하지 못한 주유의 비용이면 true(주유 이벤트와 짝짓지 않는다). */
+    @ColumnInfo(defaultValue = "0") val undetected: Boolean = false,
 )
 
 /** 여행과 비용을 하나의 쿼리 시점으로 읽는 관계. 비용 순서는 보장되지 않으므로 호출자가 정렬한다. */

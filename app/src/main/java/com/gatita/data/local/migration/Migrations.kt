@@ -113,5 +113,50 @@ object Migrations {
             db.execSQL("CREATE TABLE IF NOT EXISTS `trip_sessions` (`tripId` INTEGER NOT NULL, `pausedAt` INTEGER, `hidden` INTEGER NOT NULL, PRIMARY KEY(`tripId`), FOREIGN KEY(`tripId`) REFERENCES `trips`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
         }
     }
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+
+    /**
+     * v4 → v5(구간별 유류비 방식). 기존 데이터를 지우거나 다시 쓰지 않는다.
+     * 기존 여행은 calculationVersion 'payments-v1'로 남아 결제액 방식으로 계속 동작한다.
+     * 새 테이블의 열·인덱스·외래키·기본값은 FuelTrackingEntities와 정확히 같아야 한다.
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `trips` ADD COLUMN `calculationVersion` TEXT NOT NULL DEFAULT 'payments-v1'")
+            db.execSQL("ALTER TABLE `trips` ADD COLUMN `manualFuelUnitPrice` TEXT")
+            db.execSQL("ALTER TABLE `costs` ADD COLUMN `undetected` INTEGER NOT NULL DEFAULT 0")
+
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `fuel_snapshots` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tripId` INTEGER NOT NULL, " +
+                    "`takenAtMillis` INTEGER NOT NULL, `kind` TEXT NOT NULL, `odometerKm` TEXT NOT NULL, " +
+                    "`fuelPercent` INTEGER, `efficiencyValue` TEXT, `efficiencyUnit` TEXT, `efficiencyScope` TEXT, " +
+                    "`aggregationKey` TEXT, `cumulativeDistanceKm` TEXT, `parked` INTEGER, `source` TEXT NOT NULL, " +
+                    "FOREIGN KEY(`tripId`) REFERENCES `trips`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_fuel_snapshots_tripId_takenAtMillis_id` ON `fuel_snapshots` (`tripId`, `takenAtMillis`, `id`)")
+
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `refuel_events` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tripId` INTEGER NOT NULL, " +
+                    "`detectedAtMillis` INTEGER NOT NULL, `percentBefore` INTEGER NOT NULL, `percentAfter` INTEGER NOT NULL, " +
+                    "`dismissed` INTEGER NOT NULL DEFAULT 0, " +
+                    "FOREIGN KEY(`tripId`) REFERENCES `trips`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_refuel_events_tripId_detectedAtMillis_id` ON `refuel_events` (`tripId`, `detectedAtMillis`, `id`)")
+
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `payment_settlement_fuel_intervals` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `settlementId` INTEGER NOT NULL, " +
+                    "`ordinal` INTEGER NOT NULL, `distanceKm` TEXT NOT NULL, `usage` TEXT, `unitPrice` TEXT, " +
+                    "`costExact` TEXT, `exclusion` TEXT, `exclusionDetail` TEXT, " +
+                    "FOREIGN KEY(`settlementId`) REFERENCES `payment_settlements`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_payment_settlement_fuel_intervals_settlementId_ordinal` " +
+                    "ON `payment_settlement_fuel_intervals` (`settlementId`, `ordinal`)",
+            )
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 }

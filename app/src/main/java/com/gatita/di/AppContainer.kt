@@ -3,6 +3,7 @@ package com.gatita.di
 import android.content.Context
 import com.gatita.data.local.AppDatabase
 import com.gatita.data.repository.RoomCostRepository
+import com.gatita.data.repository.RoomFuelTrackingRepository
 import com.gatita.data.repository.RoomPaymentSettlementRepository
 import com.gatita.data.repository.RoomSettlementRepository
 import com.gatita.data.repository.RoomTransactionRunner
@@ -11,6 +12,7 @@ import com.gatita.data.repository.RoomTripRepository
 import com.gatita.data.vehicle.PleosVehicleDataSource
 import com.gatita.domain.calculator.SettlementCalculator
 import com.gatita.domain.repository.CostRepository
+import com.gatita.domain.repository.FuelTrackingRepository
 import com.gatita.domain.repository.PaymentSettlementRepository
 import com.gatita.domain.repository.SettlementRepository
 import com.gatita.domain.repository.TransactionRunner
@@ -24,6 +26,13 @@ import com.gatita.domain.usecase.ConfirmSettlementUseCase
 import com.gatita.domain.usecase.DeleteCostUseCase
 import com.gatita.domain.usecase.DiscardEmptyTripUseCase
 import com.gatita.domain.usecase.FinishTripUseCase
+import com.gatita.domain.usecase.FuelRecordingLoop
+import com.gatita.domain.usecase.ObserveFuelProgressUseCase
+import com.gatita.domain.usecase.ObserveRefuelsUseCase
+import com.gatita.domain.usecase.RecordFuelSnapshotUseCase
+import com.gatita.domain.usecase.SetCostUndetectedUseCase
+import com.gatita.domain.usecase.SetManualFuelUnitPriceUseCase
+import com.gatita.domain.usecase.SetRefuelDismissedUseCase
 import com.gatita.domain.usecase.GetSettlementRecordUseCase
 import com.gatita.domain.usecase.ObserveCostLedgerUseCase
 import com.gatita.domain.usecase.ObserveSettlementListUseCase
@@ -34,6 +43,7 @@ import com.gatita.domain.usecase.RestoreActiveTripUseCase
 import com.gatita.domain.usecase.SaveSegmentUseCase
 import com.gatita.domain.usecase.SetCostIncludedUseCase
 import com.gatita.domain.usecase.StartTripUseCase
+import com.gatita.domain.usecase.TakeEndSnapshotUseCase
 import com.gatita.domain.usecase.UpdateCostUseCase
 import com.gatita.domain.usecase.UpdateSplitPolicyUseCase
 import com.gatita.domain.vehicle.VehicleDataSource
@@ -65,6 +75,7 @@ class AppContainer(
     val costRepository: CostRepository = RoomCostRepository(database)
     val tripLedgerRepository: TripLedgerRepository = RoomTripLedgerRepository(database)
     val paymentSettlementRepository: PaymentSettlementRepository = RoomPaymentSettlementRepository(database)
+    val fuelTrackingRepository: FuelTrackingRepository = RoomFuelTrackingRepository(database)
 
     /** legacy: v1 추정 정산 저장소. 옛 정산 이력을 읽는 데 쓴다. */
     val settlementRepository: SettlementRepository = RoomSettlementRepository(database)
@@ -83,7 +94,18 @@ class AppContainer(
     val saveSegment = SaveSegmentUseCase(tripRepository, transactions)
 
     /** 거리 기록 없이 비용만 있는 여행도 완료할 수 있다. 새 화면은 이것을 쓴다. */
-    val completeTrip = CompleteTripUseCase(tripRepository, costRepository, transactions)
+    val completeTrip = CompleteTripUseCase(tripRepository, costRepository, transactions, fuelTrackingRepository)
+
+    // ---- 구간별 유류비(fuel-segments-v2): 차량 측정 기록과 사용자 보정 ----
+    val recordFuelSnapshot =
+        RecordFuelSnapshotUseCase(vehicleDataSource, tripRepository, fuelTrackingRepository, transactions, clock)
+    val fuelRecordingLoop = FuelRecordingLoop(tripRepository.observeActiveTrip(), recordFuelSnapshot)
+    val takeEndSnapshot = TakeEndSnapshotUseCase(recordFuelSnapshot, fuelTrackingRepository)
+    val observeFuelProgress = ObserveFuelProgressUseCase(fuelTrackingRepository)
+    val observeRefuels = ObserveRefuelsUseCase(fuelTrackingRepository)
+    val setRefuelDismissed = SetRefuelDismissedUseCase(tripRepository, fuelTrackingRepository, transactions, clock)
+    val setCostUndetected = SetCostUndetectedUseCase(tripRepository, fuelTrackingRepository, transactions, clock)
+    val setManualFuelUnitPrice = SetManualFuelUnitPriceUseCase(tripRepository, fuelTrackingRepository, transactions, clock)
 
     /** 구간·비용·거리가 모두 없는 진행 중 여행만 닫는다. 완료·확정 여행의 삭제는 지원하지 않는다. */
     val discardEmptyTrip = DiscardEmptyTripUseCase(tripRepository, costRepository, roomTripRepository, transactions)
@@ -96,10 +118,14 @@ class AppContainer(
     val observeCostLedger = ObserveCostLedgerUseCase(tripLedgerRepository)
 
     // ---- 분담·정산 ----
-    val updateSplitPolicy = UpdateSplitPolicyUseCase(tripRepository, costRepository, tripLedgerRepository, transactions, clock)
-    val previewPaymentSettlement = PreviewPaymentSettlementUseCase(tripRepository, costRepository, transactions)
+    val updateSplitPolicy = UpdateSplitPolicyUseCase(
+            tripRepository, costRepository, tripLedgerRepository, transactions, clock, fuelTrackingRepository,
+        )
+    val previewPaymentSettlement = PreviewPaymentSettlementUseCase(tripRepository, costRepository, transactions, fuelTrackingRepository)
     val confirmPaymentSettlement =
-        ConfirmPaymentSettlementUseCase(tripRepository, costRepository, paymentSettlementRepository, transactions, clock)
+        ConfirmPaymentSettlementUseCase(
+            tripRepository, costRepository, paymentSettlementRepository, transactions, clock, fuelTrackingRepository,
+        )
     val getSettlementRecord = GetSettlementRecordUseCase(paymentSettlementRepository, settlementRepository)
     val buildPaymentSummary = BuildPaymentSummaryUseCase(paymentSettlementRepository)
 

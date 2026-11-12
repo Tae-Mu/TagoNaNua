@@ -52,7 +52,7 @@ class VisualParityTest {
             segments=listOf(SegmentRow(1,"출발 → 경유지","10 km","","샘플"),SegmentRow(2,"경유지 → 주유 지점","4 km","","샘플"),SegmentRow(3,"주유 지점 → 도착","16 km","","샘플"))))
         rule.setContent { TagoTheme { ConnectedShell("home",{}) { TripContent(state,
             onBack={},onRetryLoad={},onAddCost={},onEditCost={},onIncludedChange={_,_->},onRequestDelete={},onConfirmDelete={},onDismissDelete={},
-            onEndOdometerChange={},onEfficiencyChange={},onEfficiencyUnitChange={},onSaveSegment={},onRequestComplete={state=state.copy(showCompleteConfirm=true)},
+            onRequestComplete={state=state.copy(showCompleteConfirm=true)},
             onConfirmComplete={},onDismissComplete={state=state.copy(showCompleteConfirm=false)},onRequestDiscard={},onConfirmDiscard={},onDismissDiscard={},onOpenSettlement={},onOpenResult={}) } } }
         rule.onNodeWithText("강릉 주말 여행").assertExists()
         shot("recording")

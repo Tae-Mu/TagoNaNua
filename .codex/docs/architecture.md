@@ -23,8 +23,20 @@ app 모듈 하나를 사용합니다.
 - domain/calculator/ShareAllocator.kt: 정수 원 나머지 배분
 - domain/calculator/SettlementCalculator.kt: 옛 추정 계산(v1 이력 호환용, 새 정산에 사용하지 않음)
 - domain/vehicle/VehicleDataSource.kt, data/vehicle/SampleVehicleDataSource.kt: 차량 데이터 인터페이스와 샘플 구현
-- data/vehicle/PleosVehicleDataSource.kt: 실제 차량 연동(미구현)
+- data/vehicle/PleosVehicleDataSource.kt: Pleos SDK 2.3.2로 주행거리(필수)·연료 %·"주유 이후" 연비/거리·기어(숨김·deprecated API, 실패 시 null)를 읽는다. 리스너가 아니라 60초 폴링(`FuelRecordingLoop`, 앱이 켜져 있는 동안만)이다. 실차·시동 사이클 검증 없음
 - navigation/AppNavHost.kt: 화면 이동
+
+## 계산 규칙 (구간별 유류비 방식, calculationVersion `fuel-segments-v2`) — 구현됨(JVM 검증은 도메인만)
+
+구현: `domain/calculator/FuelSettlementCalculator.kt`, 모델 `domain/model/FuelSettlement.kt`. Android·Room·SDK에 의존하지 않는 순수 함수이며 아래 "결제액 방식" 계산과 별개다. `FuelSettlementPlanner`(미리보기·확정 스냅샷), `FuelIntervalBuilder`(구간 구성), `FuelTrackingUseCases`(측정 기록·보정)가 이를 호출하고 `PaymentUseCases`가 `calculationVersion`으로 분기한다.
+
+- 입력: 주유 구간 목록(시간순, 크기 = 감지 주유 수 + 1)과 구간별 시작·끝 누적 연비 측정(`EfficiencyReading`), 입력 순서의 FUEL 비용(`FuelCostRef`), 직접 입력 단가(선택), 포함된 기타 비용 합계.
+- 사용량: 구간 0은 `EfficiencyMath.segmentFuelLiters`(끝 측정 − 시작 측정, 같은 집계 키), 주유 직후 구간은 0에서 끝 측정까지(누적 거리 × 연비). 내연 `LITERS_PER_100_KM`, 전기 `KM_PER_KWH`(사용량 단위 kWh).
+- 단가: 구간 0·1은 첫 짝지어진 FUEL 비용, 구간 k는 k번째. 주유가 없으면 직접 입력 단가. 단가가 없거나 측정이 없는 구간은 제외하고 `FuelExclusion`으로 사유를 남긴다. 0·평균 대체 없음.
+- 합계: Σ(사용량 × 단가)를 구간별 반올림 없이 합한 뒤 한 번 HALF_UP 반올림하고 기타 비용을 더한다(Long 오버플로 검사). 총액이 0이면 확정할 수 없다. 분담은 기존 `PaymentSettlementCalculator.calculateShares`(나머지 순서 배분)를 재사용한다.
+- 짝짓기: `checkRefuelMatching` — 감지 주유 수와 "감지 안 됨"이 아닌 FUEL 비용 수가 다르면 `REFUEL_COST_MISMATCH`.
+- 상수: `FuelRules.REFUEL_PERCENT_THRESHOLD`(5), `FuelRules.PARK_STOP_SECONDS`(120). `RefuelDetector.isRefuel`은 연료 % 값이 하나라도 없으면 감지하지 않는다.
+- 남은 구현: 연료 %·기어·거리 구독과 스냅샷 저장(Room), 주유 이벤트·"주유 아님"/"감지 안 됨" 상태 저장, 여행 종료 조건, 확정 스냅샷 확장, 화면. 실차 검증이 필요한 가정은 [결정 기록](decisions.md)에 있다.
 
 ## 계산 규칙 (결제액 방식, calculationVersion `payments-v1`)
 
@@ -76,4 +88,4 @@ TripViewModel → SetTripPausedUseCase → TripSessionRepository로 수동 일�
 
 ## 차량 입력 경로 보정 (2026-11-10)
 
-거리·연비 수동 UI를 제거했다. HomeViewModel에 VehicleDataSource를 주입하고 readSnapshot의 PLEOS 성공값을 StartTripCommand로 전달한다. SDK 미연결·조회 실패·응답 시간 초과 시 여행 생성 없이 오류 안내한다. AppContainer는 샘플 대신 UnavailableVehicleDataSource를 사용하며 실제 Pleos 구현을 가장하지 않는다. SDK 이벤트 자동 구간 저장은 후속 구현이다. 기존 데이터/스키마/정산 규칙은 변경하지 않았다.
+거리·연비 수동 UI를 제거했다. HomeViewModel에 VehicleDataSource를 주입하고 readSnapshot의 PLEOS 성공값을 StartTripCommand로 전달한다. SDK 미연결·조회 실패·응답 시간 초과 시 여행 생성 없이 오류 안내한다. AppContainer는 PleosVehicleDataSource를 사용한다(2026-11-12: 이전의 UnavailableVehicleDataSource는 삭제). 연비는 단위·집계 기준 미확인으로 null(측정 실패)로 둔다. TripViewModel의 수동 구간 저장 경로(MANUAL)도 삭제했으며 SaveSegmentUseCase는 후속 자동 구간 저장용으로 도메인에 남긴다. SDK 이벤트 자동 구간 저장은 후속 구현이다. 기존 데이터/스키마/정산 규칙은 변경하지 않았다.

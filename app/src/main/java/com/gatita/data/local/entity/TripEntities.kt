@@ -35,6 +35,10 @@ data class TripEntity(
     @ColumnInfo(defaultValue = "0") val revision: Long = 0,
     @ColumnInfo(defaultValue = "0") val createdAtMillis: Long = 0,
     @ColumnInfo(defaultValue = "0") val updatedAtMillis: Long = 0,
+    // ---- v5(구간별 유류비 방식) 컬럼. 기존 여행은 payments-v1로 남는다. ----
+    @ColumnInfo(defaultValue = "'payments-v1'") val calculationVersion: String = "payments-v1",
+    /** 주유가 없는 여행에서 사용자가 직접 입력한 원/L 단가. 없으면 NULL. */
+    val manualFuelUnitPrice: String? = null,
 )
 
 /**

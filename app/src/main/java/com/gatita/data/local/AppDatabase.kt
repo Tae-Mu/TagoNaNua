@@ -6,14 +6,18 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.gatita.data.local.dao.CostDao
+import com.gatita.data.local.dao.FuelTrackingDao
 import com.gatita.data.local.dao.PaymentSettlementDao
 import com.gatita.data.local.dao.SettlementDao
 import com.gatita.data.local.dao.TripDao
 import com.gatita.data.local.entity.CostEntity
 import com.gatita.data.local.entity.FuelPriceEntity
+import com.gatita.data.local.entity.FuelSnapshotEntity
 import com.gatita.data.local.entity.PaymentSettlementCostEntity
 import com.gatita.data.local.entity.PaymentSettlementEntity
+import com.gatita.data.local.entity.PaymentSettlementFuelIntervalEntity
 import com.gatita.data.local.entity.PaymentSettlementShareEntity
+import com.gatita.data.local.entity.RefuelEventEntity
 import com.gatita.data.local.entity.SegmentEntity
 import com.gatita.data.local.entity.SettlementEntity
 import com.gatita.data.local.entity.SettlementItemEntity
@@ -24,6 +28,7 @@ import com.gatita.data.local.migration.Migrations
 
 /**
  * 버전 이력: 1 = 거리·연비 기반 추정 정산, 2 = 결제액 방식(costs, payment_settlements 등) 추가.
+ * 5 = 구간별 유류비 방식(fuel-segments-v2): 차량 측정·주유 이벤트·구간 결과 테이블과 여행·비용 컬럼 추가.
  * v1의 settlements·fuel_prices·settlement_items·settlement_shares는 옛 정산(legacy) 이력으로 그대로 읽는다.
  */
 @Database(
@@ -40,8 +45,11 @@ import com.gatita.data.local.migration.Migrations
         PaymentSettlementEntity::class,
         PaymentSettlementCostEntity::class,
         PaymentSettlementShareEntity::class,
+        FuelSnapshotEntity::class,
+        RefuelEventEntity::class,
+        PaymentSettlementFuelIntervalEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -51,6 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun settlementDao(): SettlementDao
     abstract fun costDao(): CostDao
     abstract fun paymentSettlementDao(): PaymentSettlementDao
+    abstract fun fuelTrackingDao(): FuelTrackingDao
 
     companion object {
         const val NAME = "gatita.db"

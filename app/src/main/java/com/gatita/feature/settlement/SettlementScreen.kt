@@ -76,6 +76,8 @@ fun SettlementRoute(
         onConfirm = viewModel::confirm,
         onDismissConfirm = viewModel::dismissConfirm,
         onEditCosts = { onOpenTrip(tripId) },
+        onManualPriceChange = viewModel::onManualPriceChange,
+        onSaveManualPrice = viewModel::saveManualPrice,
     )
 }
 
@@ -91,6 +93,8 @@ fun SettlementContent(
     onConfirm: () -> Unit,
     onDismissConfirm: () -> Unit,
     onEditCosts: () -> Unit,
+    onManualPriceChange: (String) -> Unit = {},
+    onSaveManualPrice: () -> Unit = {},
 ) {
     GatitaScaffold(title = "정산 미리보기", onBack = onBack, subtitle="함께 쓴 비용을 확인하고, 편하게 나눠요.") {
         val preview = state.preview
@@ -100,7 +104,7 @@ fun SettlementContent(
             preview == null -> ErrorBlock(state.loadError ?: "정산을 불러오지 못했습니다.", onRetry)
             else -> PreviewBody(
                 state, preview, onDriverNameChange, onPeopleChange, onIncludeDriverChange,
-                onRequestConfirm, onEditCosts,
+                onRequestConfirm, onEditCosts, onManualPriceChange, onSaveManualPrice,
             )
         }
     }
@@ -111,7 +115,8 @@ fun SettlementContent(
             title = { Text("정산을 확정할까요?") },
             text = {
                 Text(
-                    "정산에 포함한 실제 결제 금액 합계 ${Formatters.won(state.preview.totalWon)}을(를) " +
+                    (if (state.preview.fuel != null) "구간별 유류비와 기타 비용을 합친 ${Formatters.won(state.preview.totalWon)}을(를) "
+                    else "정산에 포함한 실제 결제 금액 합계 ${Formatters.won(state.preview.totalWon)}을(를) ") +
                         "${state.preview.splitPeople}명이 나눈 결과를 저장합니다. 확정하면 비용·인원·분담액을 수정할 수 없습니다. " +
                         "송금이나 입금은 이 앱에서 처리되지 않습니다.",
                 )
@@ -135,6 +140,8 @@ private fun PreviewBody(
     onIncludeDriverChange: (Boolean) -> Unit,
     onRequestConfirm: () -> Unit,
     onEditCosts: () -> Unit,
+    onManualPriceChange: (String) -> Unit,
+    onSaveManualPrice: () -> Unit,
 ) {
     val locked = state.isUpdatingPolicy || state.isConfirming
     var breakdown by rememberSaveable { mutableStateOf(false) }
@@ -174,8 +181,13 @@ private fun PreviewBody(
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(20.dp)) {
         Panel(Modifier.weight(1f)) {
             SectionTitle("나눌 주유 내역")
-            AmountLabel(Formatters.won(preview.fuelTotalWon).removeSuffix("원"),"원",30)
-            Note("정산에 포함한 주유 결제 금액이에요.")
+            if(preview.fuel?.fuelNotIncluded==true) {
+                Text("유류비 미포함",fontSize=24.sp)
+                Note("측정값이나 단가가 없어 유류비를 계산하지 못했어요. 나머지 비용만 나눠요.")
+            } else {
+                AmountLabel(Formatters.won(preview.fuelTotalWon).removeSuffix("원"),"원",30)
+                Note(if(preview.fuel!=null)"구간별 사용량 × 주유 단가로 계산했어요." else "정산에 포함한 주유 결제 금액이에요.")
+            }
             Action("비용 내역 확인",primary=false,textSize=14,minHeight=44,onClick=onEditCosts)
         }
         Panel(Modifier.weight(1f)) {
@@ -183,6 +195,14 @@ private fun PreviewBody(
             AmountLabel(Formatters.won(preview.otherTotalWon).removeSuffix("원"),"원",30)
             Note("이번 여행에서 함께 쓴 비용을 확인하세요.")
             Action("비용 추가·수정",primary=false,textSize=14,minHeight=44,onClick=onEditCosts)
+        }
+    }
+    preview.fuel?.let { fuel ->
+        FuelIntervalPanel(fuel)
+        if(fuel.intervals.size==1) {
+            TextInput("주유 단가 직접 입력 (원/L) · 선택",state.manualPriceInput,onManualPriceChange,errorText=state.manualPriceError,enabled=!locked&&!state.isSavingPrice)
+            Action(if(state.isSavingPrice)"저장 중…" else "단가 적용",primary=false,textSize=14,minHeight=44,enabled=!locked&&!state.isSavingPrice,onClick=onSaveManualPrice)
+            Note("이번 여행에서 주유를 감지하지 못했어요. 단가를 입력하지 않아도 정산할 수 있고, 그때는 유류비가 포함되지 않아요.")
         }
     }
     TextInput("정산에 표시할 이름 · 선택",state.driverNameInput,onDriverNameChange,errorText=state.nameError,enabled=!locked)
@@ -195,5 +215,28 @@ private fun PreviewBody(
         Box(Modifier.weight(1f)) { Note("✓  확정 전에 비용과 인원을 한 번 더 확인해 주세요.") }
         Action(if(state.isConfirming) "저장 중…" else "이 금액으로 확정",arrow=true,
             enabled=preview.canConfirm&&!locked&&state.nameError==null&&state.loadError==null,onClick=onRequestConfirm)
+    }
+}
+
+/** 주유 구간별 계산 근거. 측정이 없거나 단가가 없는 구간은 0원이 아니라 제외로 표시한다. */
+@Composable
+private fun FuelIntervalPanel(fuel: com.gatita.domain.model.FuelSettlementResult) {
+    Panel(Modifier.fillMaxWidth()) {
+        SectionTitle("구간별 유류비")
+        fuel.intervals.forEach { interval ->
+            val detail = if(interval.exclusion == null) {
+                "${Formatters.km(interval.distanceKm)} · 사용량 ${interval.usage?.let{Formatters.decimal(it,2)}} × ${interval.unitPriceWonPerLiter?.let{Formatters.decimal(it,2)}}원"
+            } else when(interval.exclusion) {
+                com.gatita.domain.model.FuelExclusion.MEASUREMENT_MISSING -> "${Formatters.km(interval.distanceKm)} · 차량 측정이 없어 유류비에서 제외"
+                else -> "${Formatters.km(interval.distanceKm)} · 적용할 단가가 없어 유류비에서 제외"
+            }
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                Text("구간 ${interval.ordinal+1}",fontSize=15.sp)
+                Text(interval.costWonExact?.let{Formatters.wonDecimal(it)}?:"제외",fontSize=15.sp)
+            }
+            Note(detail)
+        }
+        if(fuel.excludedIntervalCount>0&&!fuel.fuelNotIncluded)Note("제외된 구간은 평균이나 0으로 채우지 않았어요.")
+        Note("각 구간 금액은 반올림하지 않고 합친 뒤 원 단위로 한 번만 반올림해요.")
     }
 }
