@@ -145,16 +145,22 @@ fun InfoCard(
 /** 오류 문구. 스크린 리더가 나타나는 즉시 읽도록 live region으로 표시한다. */
 @Composable
 fun ErrorMessage(text: String, modifier: Modifier = Modifier) {
-    Card(
+    // [목적] 오류 안내. 어두운 붉은 면 위에 본문 색 글자로 표시
+    // [이유] 채도 높은 전체 폭 빨간 띠와 '오류:' 접두어가 화면에서 가장 큰 소리를 내 야간 화면에서 눈부셨고, 문장 자체가 무엇이 문제인지 말해 접두어가 군더더기였음
+    // [사이드 임팩트] ErrorMessage·ErrorBlock을 쓰는 모든 화면의 오류 모양이 바뀜. 화면 낭독기에는 '오류'라고 먼저 읽어 줌
+    // [수정 시 고려사항] 색만으로 오류를 알리지 않도록 contentDescription의 '오류:'를 지우지 말 것
+    androidx.compose.material3.Surface(
         modifier = modifier
             .fillMaxWidth()
-            .semantics { liveRegion = LiveRegionMode.Assertive },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+            .semantics { liveRegion = LiveRegionMode.Assertive; contentDescription = "오류: $text" },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.error.copy(alpha = .16f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = .45f)),
     ) {
         Text(
-            "오류: $text",
-            modifier = Modifier.padding(16.dp),
-            color = MaterialTheme.colorScheme.onErrorContainer,
+            text,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyLarge,
         )
     }

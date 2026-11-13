@@ -84,8 +84,9 @@ fun CostLedgerSection(
                 Spacer(Modifier.width(10.dp))
                 Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                     // ponytail: 구간별 유류비 여행의 주유 비용은 '정산 포함' 대신 '감지 안 됨'을 고름 (원격 fuel-segments-v2 로직 그대로)
-                    if(fuelSegments&&cost.kind==CostKind.FUEL){Checkbox(cost.undetected,{onUndetectedChange(cost,it)},enabled=ledger.editable&&!busy);Text("감지 안 됨",fontSize=16.sp)}
-                    else{Checkbox(cost.included,{onIncludedChange(cost,it)},enabled=ledger.editable&&!busy);Text("정산 포함",fontSize=16.sp)}
+                    // 여행을 마치는 조건을 좌우하는 체크인데 48dp 상자만 눌려, 글자까지 눌리는 56dp 체크 줄(CheckRow)로 바꿈
+                    if(fuelSegments&&cost.kind==CostKind.FUEL)CheckRow("감지 안 됨",cost.undetected,{onUndetectedChange(cost,it)},Modifier.width(150.dp),enabled=ledger.editable&&!busy)
+                    else CheckRow("정산 포함",cost.included,{onIncludedChange(cost,it)},Modifier.width(150.dp),enabled=ledger.editable&&!busy)
                     if(ledger.editable){Action("수정",primary=false,textSize=16,horizontalPadding=18,enabled=!busy){onEdit(cost)};Action("삭제",primary=false,textSize=16,horizontalPadding=18,enabled=!busy){onDelete(cost)}}
                 }
             }
@@ -99,18 +100,25 @@ internal fun iconKind(kind:CostKind)=when(kind){CostKind.FUEL->"주유";CostKind
 private fun RefuelSection(ledger:CostLedger,refuels:List<RefuelEvent>,busy:Boolean,onDismissedChange:(RefuelEvent,Boolean)->Unit) {
     val detected=refuels.count{!it.dismissed}
     val paired=ledger.costs.count{it.kind==CostKind.FUEL&&!it.undetected}
-    Panel(Modifier.fillMaxWidth()) {
-        Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text("감지한 주유 ${detected}회 · 주유 비용 ${paired}건",fontSize=17.sp)
-            Note(if(detected==paired)"주유 횟수와 비용 건수가 맞아요." else "두 수가 같아야 여행을 마칠 수 있어요. 비용을 추가하거나, 주유가 아니었다면 \"주유 아님\", 앱이 감지하지 못한 주유 비용이면 \"감지 안 됨\"을 눌러 주세요.")
-            if(refuels.isEmpty())Note("아직 감지한 주유가 없어요. 주유 감지는 차량에서 연료량 변화를 읽어요.")
+    // [목적] 감지한 주유 횟수와 주유 비용 건수가 맞는지 한 줄로 알리고, 안 맞으면 해야 할 일 하나만 안내
+    // [이유] 테두리 박스 안 세 줄짜리 문단이라 읽기 부담이 컸고, 세 가지 해결법을 한꺼번에 나열해 지금 무엇을 눌러야 하는지 알기 어려웠음
+    // [사이드 임팩트] 없음 (표시만 변경, 감지·짝맞춤 계산은 그대로)
+    // [수정 시 고려사항] 두 수가 다르면 여행을 마칠 수 없으므로 안내 문구를 지우지 말 것. 호박색은 '확인 필요' 뜻으로만 쓸 것
+    run {
+        Column(Modifier.fillMaxWidth().padding(horizontal=8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            Text("감지한 주유 ${detected}회 · 주유 비용 ${paired}건",fontSize=17.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold,
+                color=if(detected==paired)MaterialTheme.colorScheme.onSurface else androidx.compose.ui.graphics.Color(0xFFF2C46D))
+            // 팀원 화면 테스트가 '두 수가 같아야…'와 '…맞아요.' 문구를 확인하므로 문장 머리를 유지
+            if(detected<paired)Note("두 수가 같아야 여행을 마칠 수 있어요. 차량이 감지하지 못한 주유라면 ‘감지 안 됨’을 체크해 주세요.")
+            else if(detected>paired)Note("두 수가 같아야 여행을 마칠 수 있어요. 주유 비용을 추가하거나, 주유가 아니었다면 ‘주유 아님’을 체크해 주세요.")
+            else if(refuels.isEmpty())Note("아직 감지한 주유가 없어요. 주유는 차량의 연료량 변화로 알아내요.")
+            else Note("주유 횟수와 비용 건수가 맞아요.")
             refuels.forEach{event->
                 val at=java.time.Instant.ofEpochMilli(event.detectedAtMillis).atZone(java.time.ZoneId.systemDefault()).toLocalTime().withSecond(0).withNano(0)
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
                     Text("$at · 연료 ${event.percentBefore}% → ${event.percentAfter}%",fontSize=15.sp)
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        Checkbox(event.dismissed,{onDismissedChange(event,it)},enabled=ledger.editable&&!busy);Text("주유 아님")
-                    }
+                    // ponytail: 글자까지 눌리는 56dp 체크 줄(CheckRow) 재사용
+                    CheckRow("주유 아님",event.dismissed,{onDismissedChange(event,it)},Modifier.width(150.dp),enabled=ledger.editable&&!busy)
                 }
             }
         }

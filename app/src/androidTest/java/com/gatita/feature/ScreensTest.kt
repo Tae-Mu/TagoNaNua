@@ -26,7 +26,7 @@ class ScreensTest {
     }
     @Test fun homeLoadErrorOffersRetry() {
         home(HomeUiState(isLoading=false,loadError="저장된 기록을 불러오지 못했습니다."))
-        rule.onNodeWithText("오류: 저장된 기록을 불러오지 못했습니다.").assertExists()
+        rule.onNodeWithText("저장된 기록을 불러오지 못했습니다.").assertExists()
         rule.onNodeWithText("다시 불러오기").assertExists()
     }
     @Test fun qrHasAccessibleDescription() {

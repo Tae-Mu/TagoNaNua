@@ -122,8 +122,8 @@ fun HistoryContent(
                         com.gatita.domain.model.HistoryFilter.SETTLED -> "이 달에 확정한 정산이 없어요" to "여행을 마치고 정산을 확정하면 여기에 쌓여요."
                         else -> "이 달에 기록한 여행이 없어요" to "여행을 기록하면 여기에 쌓여요. 다른 달도 확인해 보세요."
                     }
-                    // ponytail: 빈 화면에는 두리번거리며 기다리는 마스코트를 곁들임 (필터를 바꿔도 다시 재생하지 않음)
-                    EmptyBlock(emptyTitle, emptyBody) { com.gatita.feature.launch.JourneyMascot(Modifier.size(210.dp),com.gatita.R.drawable.tago_empty_wait) }
+                    // ponytail: 마스코트는 홈 인사와 정산 완료에만 씀. 빈 화면은 글로만 안내
+                    EmptyBlock(emptyTitle, emptyBody)
                 } else {
                     listOf(state.rows.filter { it.section!=HistorySection.LEGACY }, state.rows.filter { it.section==HistorySection.LEGACY }).filter { it.isNotEmpty() }.forEach { group ->
                     if(group.first().section==HistorySection.LEGACY) SectionTitle(HistorySection.LEGACY.title)

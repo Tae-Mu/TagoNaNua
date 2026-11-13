@@ -75,14 +75,12 @@ fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,
                         state.startError?.let{ErrorMessage(it)}
                         ActionButton("여행 기록 시작",onStartTrip,busy=state.isStarting)
                     }
-                    // [목적] 출발 준비 화면 오른쪽: 카드 없이 마스코트와 한 줄 안내만 가운데에 둠
+                    // [목적] 출발 준비 화면 오른쪽: 카드 없이 짧은 안내 글만 가운데에 둠
                     // [이유] 조작할 것이 없는 안내를 입력 카드와 같은 테두리 박스에 담아, 박스 두 개가 같은 무게로 보였음
                     // [사이드 임팩트] 안내 문구 두 줄을 한 문단으로 합침 (내용은 그대로)
-                    // [수정 시 고려사항] 마스코트 모션(tago_prep_ready)은 진입 시 1회만 재생. 왼쪽 입력 카드보다 눈에 띄지 않게 유지
-                    Box(Modifier.weight(1f)) {
-                        EmptyBlock("함께 떠날 준비가 됐나요?","비용은 여행 중에도 추가할 수 있어요. 주유·주차·톨비를 한곳에 모으고, 도착 후 함께 나눠요.") {
-                            com.gatita.feature.launch.JourneyMascot(Modifier.size(260.dp),com.gatita.R.drawable.tago_prep_ready)
-                        }
+                    // [수정 시 고려사항] 마스코트는 바로 앞 홈 화면에서 이미 인사하므로 여기에 다시 넣지 말 것. 왼쪽 입력 카드보다 눈에 띄지 않게 유지
+                    Box(Modifier.weight(1f).align(Alignment.CenterVertically)) {
+                        EmptyBlock("함께 떠날 준비가 됐나요?","비용은 여행 중에도 추가할 수 있어요. 주유·주차·톨비를 한곳에 모으고, 도착 후 함께 나눠요.")
                     }
                 }
             }
@@ -145,7 +143,12 @@ fun HomeContent(state:HomeUiState,onNameChange:(String)->Unit,
                 // [사이드 임팩트] 없음 (표시만 변경, pendingTotalWon 계산 그대로)
                 // [수정 시 고려사항] 합계는 정산에 포함한 실제 결제액 합계라는 문구를 유지할 것 (AGENTS.md 정산 규칙)
                 if(state.pendingTrips.isNotEmpty()) Panel(Modifier.fillMaxWidth()){Note("확인이 필요한 여행 · ${state.pendingTrips.size}건");AmountLabel(Formatters.won(state.pendingTotalWon).removeSuffix("원"),"원",40);Note("정산에 포함한 실제 결제액 합계")}
-                if(state.pendingTrips.isEmpty())EmptyState("미뤄둔 정산이 없어요","여행을 마치면 여기에서 정산을 이어가요. 확정한 정산은 여행 내역에서 볼 수 있어요."){com.gatita.feature.launch.JourneyMascot(Modifier.size(210.dp),com.gatita.R.drawable.tago_empty_wait)}
+                // [목적] 미뤄둔 정산이 없을 때의 안내. 확정한 정산 목록이 있으면 한 줄로만 표시
+                // [이유] 목록이 있는데도 큰 마스코트 빈 상태가 화면 위 절반을 차지해 확정한 정산이 아래로 밀렸음
+                // [사이드 임팩트] 없음 (표시만 변경)
+                // [수정 시 고려사항] 마스코트는 홈 인사와 정산 완료에만 씀. 빈 화면마다 반복하지 말 것
+                if(state.pendingTrips.isEmpty()&&state.settledTrips.isNotEmpty())Note("미뤄둔 정산이 없어요. 여행을 마치면 여기에서 정산을 이어가요.")
+                else if(state.pendingTrips.isEmpty())EmptyState("미뤄둔 정산이 없어요","여행을 마치면 여기에서 정산을 이어가요. 확정한 정산은 여행 내역에서 볼 수 있어요.")
                 state.pendingTrips.forEach{SummaryRow(it){onOpen(it.tripId)}}
                 if(state.settledTrips.isNotEmpty()) {
                     Text("확정한 정산 · ${state.settledTrips.size}",fontWeight=FontWeight.Bold)

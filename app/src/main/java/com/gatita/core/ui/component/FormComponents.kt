@@ -156,7 +156,7 @@ fun StepperRow(
             onClick = { onValueChange(value - 1) },
             enabled = enabled && value > range.first,
             modifier = Modifier
-                .size(50.dp)
+                .size(56.dp) // ponytail: 차량 화면 터치 하한 56dp
                 .semantics { contentDescription = "$label 줄이기" },
         ) { StepGlyph(plus=false) }
         Text("$value$unit", style = MaterialTheme.typography.titleLarge)
@@ -167,7 +167,7 @@ fun StepperRow(
             onClick = { onValueChange(value + 1) },
             enabled = enabled && value < range.last,
             modifier = Modifier
-                .size(50.dp)
+                .size(56.dp) // ponytail: 차량 화면 터치 하한 56dp
                 .semantics { contentDescription = "$label 늘리기" },
         ) { StepGlyph(plus=true) }
     }

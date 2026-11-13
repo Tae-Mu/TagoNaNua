@@ -84,7 +84,8 @@ fun CostFormContent(state:CostFormUiState,onBack:()->Unit,onRetryLoad:()->Unit,o
                             }
                         }
                     }
-                    Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) { Note("장소와 비용 내용은 선택 사항이에요.") }
+                    // ponytail: 타일은 왼쪽에 모여 있는데 안내문만 화면 가운데라 어긋나 보여 왼쪽 선에 맞춤
+                    Note("장소와 비용 내용은 선택 사항이에요.")
                 } else {
                     // [목적] 비용 종류 변경 칩 (수정할 때만)
                     // [이유] 추가할 때는 '비용 종류로 돌아가기'와 역할이 겹치고 제목('주차비')과 표기('주차')도 달라 숨김. 수정 화면에는 종류 선택 단계가 없어 유지
@@ -134,12 +135,11 @@ fun CostFormContent(state:CostFormUiState,onBack:()->Unit,onRetryLoad:()->Unit,o
                         }
                     }
                     }
-                    if(fuel)Note("주유 비용은 '주유 구간'의 단가를 정하는 데 써요. 주유한 뒤에 입력해도 되고, 주유 횟수와 비용 건수가 맞아야 여행을 마칠 수 있어요.")
+                    if(fuel)Note("주유 횟수와 주유 비용 건수가 맞아야 여행을 마칠 수 있어요.") // ponytail: 안내문이 다섯 곳이라 버튼이 밀려, 꼭 필요한 한 줄만 남김
                     state.saveError?.let{ErrorMessage(it)}
                     if(state.conflict) SecondaryButton("최신 내용 다시 불러오기",onRetryLoad)
                     ActionButton(if(state.isEdit)"수정 완료" else "추가하기",onSave,busy=state.isSaving,
                         enabled=state.amountInput.isNotBlank()&&(!fuel||state.unitPriceInput.isNotBlank()))
-                    Note("저장한 비용은 이 여행에 연결돼요. 정산 포함 여부는 비용 내역에서 바꿀 수 있어요.")
                 }
             }
             if(selected) Panel(Modifier.fillMaxWidth(),content=body) else Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(14.dp),content=body) }

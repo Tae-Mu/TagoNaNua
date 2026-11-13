@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.gatita.core.ui.component.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gatita.core.ui.component.ActionButton
@@ -43,7 +44,9 @@ fun ResultRoute(viewModel: ResultViewModel, onBack: () -> Unit, onHome: () -> Un
 
 @Composable
 fun ResultContent(state: ResultUiState, onBack: () -> Unit, onHome: () -> Unit, onRetry: () -> Unit) {
-    GatitaScaffold(title = (state.content as? ResultContentState.Payments)?.view?.tripName ?: "정산 결과", onBack = onBack,subtitle="함께 탄 사람들에게 정산 요약을 전달해 주세요.") {
+    GatitaScaffold(title = (state.content as? ResultContentState.Payments)?.view?.tripName ?: "정산 결과", onBack = onBack,
+        // ponytail: 카드 위에 따로 떠 있던 '확정 시각' 라벨·값을 부제 한 줄로 합침
+        subtitle=if(state.confirmedAt.isNotBlank())"${state.confirmedAt}에 확정했어요. 함께 탄 사람들에게 요약을 전달해 주세요." else "함께 탄 사람들에게 정산 요약을 전달해 주세요.") {
         val content = state.content
         when {
             state.isLoading -> LoadingBlock("정산 결과를 불러오는 중")
@@ -52,7 +55,6 @@ fun ResultContent(state: ResultUiState, onBack: () -> Unit, onHome: () -> Unit, 
                 EmptyBlock("확정된 정산이 없어요", "정산을 확정하면 이곳에서 결과와 공유용 QR을 볼 수 있어요.")
 
             else -> {
-                LabeledValue("확정 시각", state.confirmedAt)
                 when (content) {
                     is ResultContentState.Payments -> PaymentsResult(content)
                     is ResultContentState.Legacy -> LegacySettlementCard(content.view)
@@ -139,7 +141,7 @@ private fun PaymentsResult(content: ResultContentState.Payments) {
     if(showSummary) VehicleDialog({showSummary=false}) {
         androidx.compose.material3.Surface(Modifier.padding(24.dp).widthIn(max=860.dp).fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp)) {
             Row(Modifier.padding(32.dp),horizontalArrangement=Arrangement.spacedBy(32.dp),verticalAlignment=Alignment.CenterVertically) {
-                (content.qr as? QrState.Ready)?.let { QrCodeView(matrix=it.matrix,contentDescription="정산 요약 QR 코드. 같은 내용이 옆에 글로도 표시돼요.",modifier=Modifier.width(300.dp)) }
+                (content.qr as? QrState.Ready)?.let { QrCodeView(matrix=it.matrix,contentDescription="정산 요약 QR 코드. 같은 내용이 옆에 글로도 표시돼요.",modifier=Modifier.width(320.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))) }
                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                     Text("정산 요약 QR",style=MaterialTheme.typography.headlineSmall)
                     Note(if(content.qr is QrState.Ready) "휴대폰 카메라로 찍으면 아래 요약 글이 열려요. 송금이나 입금 확인은 아니에요." else "요약이 길어 QR을 만들지 못했어요. 아래 글을 직접 전달해 주세요.")

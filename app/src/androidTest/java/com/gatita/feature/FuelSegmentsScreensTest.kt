@@ -183,7 +183,7 @@ class FuelSegmentsScreensTest {
 
     @Test fun settlementNotFoundState() {
         showSettlement(SettlementUiState(isLoading = false, notFound = true))
-        rule.onNodeWithText("여행을 찾을 수 없습니다").assertExists()
+        rule.onNodeWithText("여행을 찾을 수 없어요").assertExists()
     }
 
     @Test fun settlementErrorOffersRetry() {

@@ -50,7 +50,7 @@ fun ErrorCode.userMessage(): String = when (this) {
     ErrorCode.EMPTY_TRIP -> "주행거리도 비용도 없는 여행은 마칠 수 없습니다. 비용을 추가하거나 구간을 기록하세요."
     ErrorCode.TRIP_NOT_EMPTY -> "구간이나 비용이 기록된 여행은 빈 여행으로 닫을 수 없습니다. 기록은 그대로 남아 있습니다."
     ErrorCode.SETTLEMENT_NOT_FOUND -> "확정된 정산을 찾을 수 없습니다."
-    ErrorCode.REFUEL_COST_MISMATCH -> "감지된 주유 횟수와 입력한 주유 비용 수가 달라 여행을 마칠 수 없습니다. 주유 내역을 확인하세요."
+    ErrorCode.REFUEL_COST_MISMATCH -> "감지한 주유 횟수와 주유 비용 건수가 달라 여행을 마칠 수 없어요. 비용 목록에서 두 수를 맞춰 주세요."
 }
 
 const val UNEXPECTED_FAILURE_MESSAGE = "처리 중 오류가 발생했습니다. 입력한 내용은 그대로 남아 있습니다. 잠시 후 다시 시도하세요."

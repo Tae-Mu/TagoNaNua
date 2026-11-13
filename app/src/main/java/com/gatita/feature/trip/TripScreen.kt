@@ -174,10 +174,18 @@ fun TripContent(
                                 }
                             }
                             Column(Modifier.weight(1f).padding(32.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
-                                Text(if(trip.status==TripStatus.IN_PROGRESS && state.pausedAt!=null)"기록을 안전하게\n보관하고 있어요" else if(trip.status==TripStatus.IN_PROGRESS)"여행은 계속\n이어지고 있어요" else "함께한 여행을\n기록했어요",fontSize=28.sp,fontWeight=FontWeight.Bold)
-                                Note("이동 거리와 구간은 차량에서 받아요.")
-                                HorizontalDivider()
+                                // [목적] 히어로 카드 오른쪽: 저장된 구간 수와 '이번 여행 비용' 줄(누르면 비용 목록)
+                                // [이유] 오른쪽 절반이 '여행은 계속 이어지고 있어요' 같은 장식 문구뿐이었고, 정작 자주 보는 비용 요약은 카드 아래 별도 박스에 있었음
+                                // [사이드 임팩트] 카드 아래 비용 요약 박스가 없어져 화면이 한 단 짧아짐. 비용 목록 진입 동작(showCosts)은 그대로
+                                // [수정 시 고려사항] 비용 금액은 왼쪽 거리 숫자보다 작게 유지(화면의 큰 숫자는 하나). 비용 줄은 56dp 이상·화살표 유지
                                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) { Note("저장된 구간");AmountLabel("${state.segments.size}","개",30) }
+                                HorizontalDivider()
+                                Row(Modifier.fillMaxWidth().heightIn(min=56.dp).clickable{showCosts=true},verticalAlignment=Alignment.CenterVertically) {
+                                    Text("이번 여행 비용",Modifier.weight(1f),fontSize=18.sp,fontWeight=FontWeight.SemiBold)
+                                    Text("${ledger.count}건 · ${Formatters.won(ledger.registeredTotalWon)}",fontSize=20.sp)
+                                    Spacer(Modifier.width(8.dp)); ChevronRight()
+                                }
+                                Note("이동 거리와 구간은 차량에서 받아요.")
                             }
                         }
                     }
@@ -206,17 +214,6 @@ fun TripContent(
                                 }
                                 if(row.efficiency.isNotBlank()) Note(row.efficiency)
                             }
-                        }
-                    }
-                    Panel(Modifier.fillMaxWidth().clickable{showCosts=true}) {
-                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            // [목적] 비용 목록으로 가는 요약 줄
-                            // [이유] '비용 추가' 버튼과 역할이 겹쳐 보여, 안내를 '목록 보기'로 바꾸고 텍스트 '›'를 공통 아이콘으로 교체
-                            // [사이드 임팩트] 없음 (표시만 변경)
-                            // [수정 시 고려사항] 화살표는 ChevronRight()로 통일 (유니코드 글리프 금지)
-                            Column(Modifier.weight(1f)){Text("이번 여행 비용",fontWeight=FontWeight.Bold);Note("기록한 비용을 보고 정산 포함 여부를 정해요.")}
-                            Text("${ledger.count}건 · ${Formatters.won(ledger.registeredTotalWon)}",fontSize=18.sp)
-                            Spacer(Modifier.width(8.dp)); ChevronRight()
                         }
                     }
                     // [목적] 여행 화면 주요 버튼 줄
@@ -331,11 +328,7 @@ fun TripContent(
                 Text(state.trip?.name.orEmpty(),fontSize=30.sp,fontWeight=FontWeight.Bold)
                 Note("함께 타는 ${state.trip?.people}명")
             }
-            // [목적] 잠시 멈춘 여행 카드의 그림: 눈을 감고 쉬는 마스코트
-            // [이유] 경로 아이콘 배지는 '쉬는 중'이라는 상태를 전하지 못해, 스르르 잠드는 모션으로 바꿈
-            // [사이드 임팩트] 멈춤 화면 진입 시 모션 1회 재생 후 눈 감은 장면에서 멈춤
-            // [수정 시 고려사항] 카드 제목 줄 높이를 넘지 않게 120dp 안에서 유지
-            com.gatita.feature.launch.JourneyMascot(Modifier.size(120.dp),com.gatita.R.drawable.tago_pause_rest)
+            // ponytail: 마스코트는 홈 인사와 정산 완료에만 씀 (멈춤 상태는 화면 제목이 이미 알려줌)
         }
         Surface(color=Navy,shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) {
             Row(Modifier.fillMaxWidth().padding(horizontal=28.dp,vertical=24.dp),horizontalArrangement=Arrangement.spacedBy(30.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -356,7 +349,7 @@ fun TripContent(
             androidx.compose.material3.Icon(androidx.compose.ui.res.painterResource(com.gatita.R.drawable.ic_receipt),null,Modifier.size(22.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
             Column(Modifier.weight(1f).clickable(onClick=onCosts),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                 Text("이번 여행 비용  ${state.ledger?.count?:0}건",fontSize=15.sp,fontWeight=FontWeight.SemiBold)
-                Text(if(state.ledger?.count==0) "주유·주차·톨비를 기록해 보세요." else "등록한 비용도 함께 보관했어요.",fontSize=15.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                if(state.ledger?.count==0) Text("주유·주차·톨비를 기록해 보세요.",fontSize=15.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
             AmountLabel(Formatters.won(state.ledger?.registeredTotalWon?:0).removeSuffix("원"),"원",23)
             Action("비용 추가",primary=false,textSize=16,enabled=!busy,onClick=onAdd)
@@ -365,10 +358,7 @@ fun TripContent(
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(24.dp)) {
             Action("여행 이어가기",modifier=Modifier.widthIn(min=230.dp),minHeight=56,textSize=18,
                 trailingIcon=com.gatita.R.drawable.ic_route,enabled=!busy,onClick=onResume)
-            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                Text("여기까지 기록했어요",fontSize=16.sp,fontWeight=FontWeight.SemiBold)
-                Note("이 기기에 저장한 여행을 그대로 이어가요.")
-            }
+            // ponytail: 화면 부제("쉬어가는 동안에도 여행 기록은 그대로예요")와 같은 말이라 옆 안내 두 줄 삭제
         }
       }
     }
