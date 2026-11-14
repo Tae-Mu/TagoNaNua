@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,12 +8,12 @@ plugins {
 }
 
 android {
-    // com.gatita는 임시 패키지명이다. 최종 식별자 확정 시 namespace와 applicationId를 함께 바꾼다.
+    // applicationId(앱 식별자)는 com.tago.app으로 확정했다. namespace(com.gatita)는 소스 패키지·Room 스키마 경로와 연결되어 있어 유지한다.
     namespace = "com.gatita"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.gatita"
+        applicationId = "com.tago.app"
         // 미확인: Pleos 대상 기기의 최소 API 수준. 확인 전 임시값이다.
         minSdk = 29
         targetSdk = 35
@@ -20,10 +22,32 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // 서명 정보는 저장소 밖 파일에서 읽는다. 기본 위치: ~/.tago-signing/keystore.properties
+    // 다른 위치는 -PkeystoreProperties=<경로>로 지정한다. 파일이 없으면 release는 서명되지 않는다.
+    val keystoreFile = file(
+        (project.findProperty("keystoreProperties") as String?)
+            ?: "${System.getProperty("user.home")}/.tago-signing/keystore.properties"
+    )
+    val keystoreProps = Properties().apply {
+        if (keystoreFile.exists()) keystoreFile.inputStream().use { load(it) }
+    }
+
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isDebuggable = false
             isMinifyEnabled = false
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 

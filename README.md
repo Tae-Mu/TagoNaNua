@@ -1,4 +1,15 @@
-# 같이타 정산 (TagoNaNua)
+# TAGO(타고) – 함께 탄 차의 유류비·여행 비용 정산 앱 (TagoNaNua)
+
+> **한 줄 소개**: 함께 탄 차의 유류비와 주차·톨비 등 여행 비용을, 차량 화면에서 인원수대로 편하게 나눠 주는 정산 앱입니다.
+
+## 제출 정보
+
+- 팀명: TAGO / 앱 식별자(applicationId): `com.tago.app` / 버전 0.1.0
+- **APK 위치**: [`apk/TAGO_TAGO_release.apk`](apk/TAGO_TAGO_release.apk) (release, 서명됨, 약 32MB)
+- 개발·검증 환경: **Pleos Connect 에뮬레이터 v2.1**(AVD `Pleos_Connect_v2.1`, Android 14 Automotive x86_64 이미지), 화면 **2560×1440px 가로형, 밀도 160dpi(= 2560×1440dp)**. 앱은 이 차량 화면의 오른쪽 영역에서 실행됩니다. 이 외 화면 규격은 검증하지 않았습니다.
+- 실행 방법: 에뮬레이터를 켠 뒤 `adb install -r apk/TAGO_TAGO_release.apk`로 설치하고 `adb shell am start --user 10 -n com.tago.app/com.gatita.MainActivity`로 실행합니다(Automotive 에뮬레이터는 사용자 10). 하단 앱 목록에서도 실행할 수 있습니다. 자세한 환경 설정은 [설치 및 실행 가이드](docs/SETUP.md)를 따르세요.
+- 확인 범위: 2026-11-14에 release APK를 위 에뮬레이터에 설치해 실행했고 첫 화면(여행 홈)이 정상 표시되며 크래시 로그가 없음을 확인했습니다. 여행 시작부터 정산 확정까지의 전체 흐름을 release APK로 다시 확인하지는 않았고, 실제 차량에서는 검증하지 않았습니다.
+
 
 한 차로 이동한 여행의 비용을 인원수로 나누고 공유하는 차량 앱입니다. 현재 앱은 사용자가 입력한 **실제 결제 금액**(주유·주차·톨비·기타)을 합산해 분담액을 계산합니다(`payments-v1`). 정산 규칙은 구간별 유류비 방식(`fuel-segments-v2`: 총액 = Σ(주유 구간 사용량 × 입력 단가) + 기타 비용)으로 바뀌기로 확정되었고, 새 여행은 이 방식으로 시작하도록 구현했습니다(검증 범위는 아래 참고)([결정 기록](.codex/docs/decisions.md)). 주유량(L)은 현재 금액÷단가로 표시만 합니다.
 
@@ -41,7 +52,8 @@
 
 - Room 스키마 이력 `app/schemas/com.gatita.data.local.AppDatabase/1.json`~`5.json`은 `MigrationTest`가 사용하므로 버전 관리 대상입니다.
 - DB 버전을 올릴 때는 `data/local/migration/Migrations.kt`에 마이그레이션을 추가합니다. 파괴적 fallback은 사용하지 않습니다.
-- `minSdk`(29)와 패키지명(`com.gatita`)은 임시값입니다.
+- `minSdk`(29)는 임시값입니다. 앱 식별자(applicationId)는 `com.tago.app`으로 확정했고, 소스 패키지·`namespace`는 `com.gatita`를 그대로 사용합니다.
+- release 서명: 서명 정보는 저장소 밖 `~/.tago-signing/keystore.properties`에서 읽으며(`-PkeystoreProperties=<경로>`로 변경 가능) 키 파일은 커밋하지 않습니다. `./gradlew :app:assembleRelease`
 
 ## 개발 구성
 
@@ -99,13 +111,13 @@ app/
 gradle/wrapper/                      # Gradle Wrapper
 ```
 
-`com.gatita`는 임시 패키지명이며 앱 식별자와 최종 패키지명은 추후 확정합니다.
+앱 식별자(applicationId)는 `com.tago.app`으로 확정했습니다. 소스 패키지·`namespace`(`com.gatita`)는 Room 스키마 경로와 연결되어 있어 유지합니다.
 
 상세 기획·설계·테스트·보안 문서는 [옵시디언 보관함](.codex/docs/index.md)에서 관리합니다. Obsidian의 **폴더를 보관함으로 열기**에서 이 프로젝트의 `.codex/docs/`를 선택하세요. Codex는 [AGENTS.md](AGENTS.md)에 연결된 같은 문서를 읽습니다.
 
 ## 퍼블리싱 UI와 기능 연결
 
-실제 런처(`com.gatita`)에 TAGO 태블릿 레이아웃을 적용하고 기존 Room 기반 기능을 연결했습니다. 여행 시작·복구, 비용 추가/수정/삭제/포함 선택, 정산 확정·요약·QR, 월별 내역은 실제 데이터로 동작합니다. `PublishingApp`은 별도의 샘플 Preview로만 유지하며 실제 런처에 샘플 검수 툴바를 표시하지 않습니다.
+실제 런처(`com.tago.app`)에 TAGO 태블릿 레이아웃을 적용하고 기존 Room 기반 기능을 연결했습니다. 여행 시작·복구, 비용 추가/수정/삭제/포함 선택, 정산 확정·요약·QR, 월별 내역은 실제 데이터로 동작합니다. `PublishingApp`은 별도의 샘플 Preview로만 유지하며 실제 런처에 샘플 검수 툴바를 표시하지 않습니다.
 
 차량 SDK는 미연결이므로 자동 주행/시동 인식 대신 수동 기록임을 표시합니다. 설정(이름·운전자 기본값·화면 모드)은 영구 저장됩니다. 수동 일시정지/재개와 재실행 복구, 내역 목록 삭제를 지원합니다. 목록 삭제는 확정 원본을 보존합니다.
 

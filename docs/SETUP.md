@@ -79,9 +79,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 Automotive 에뮬레이터는 **Android 사용자 10**으로 앱을 실행합니다. 이어지는 `adb` 명령에는 대부분 `--user 10`이 필요합니다.
 
 ```bash
-adb shell am start --user 10 -n com.gatita/.MainActivity
-adb shell pm clear --user 10 com.gatita                 # 앱 데이터 초기화
-adb shell "run-as com.gatita --user 10 ls -l databases" # 앱 DB 확인
+adb shell am start --user 10 -n com.tago.app/com.gatita.MainActivity
+adb shell pm clear --user 10 com.tago.app                 # 앱 데이터 초기화
+adb shell "run-as com.tago.app --user 10 ls -l databases" # 앱 DB 확인
 ```
 
 앱이 하단 앱 목록에 보이지 않으면 위 `am start` 명령으로 실행하세요.
@@ -114,8 +114,8 @@ adb shell "run-as com.gatita --user 10 ls -l databases" # 앱 DB 확인
 - **DB를 백업할 때 `adb shell ... cat`을 쓰지 마세요.** 줄바꿈이 변환되어 파일이 손상됩니다. 바이너리는 `adb exec-out`이나 `adb push/pull`을 쓰세요.
 
   ```bash
-  adb shell am force-stop --user 10 com.gatita
-  adb exec-out "run-as com.gatita --user 10 cat databases/gatita.db" > gatita.db
+  adb shell am force-stop --user 10 com.tago.app
+  adb exec-out "run-as com.tago.app --user 10 cat databases/gatita.db" > gatita.db
   ```
 
   복원할 때는 앱을 한 번 실행해 DB 폴더가 만들어진 뒤 `-wal`, `-shm` 파일을 지우고 `gatita.db`만 덮어씁니다.
