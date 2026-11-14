@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose가 화면을 그린다. 이 테마는 시작 전 창 배경과 상태바만 정한다. -->
+    <style name="Theme.Gatita" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

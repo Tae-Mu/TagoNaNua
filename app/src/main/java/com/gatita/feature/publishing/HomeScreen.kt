@@ -54,7 +54,7 @@ internal fun HomeScreen(go: (Page) -> Unit,onSelect:(String)->Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
         listOf("출발 전에 시작" to "운전자를 포함한 인원을 확인해요.", "이동은 자동 기록" to "잠시 쉬어도 같은 여행으로 이어가요.", "도착하면 정산" to "금액을 확정하고 요약을 복사해요.").forEachIndexed { i, (title, note) ->
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("0${i + 1}", color = Blue, fontSize = 13.sp)
+                Text("0${i + 1}", color = Blue, fontSize = 15.sp)
                 Column { Text(title, fontWeight = FontWeight.Medium); Note(note) }
             }
         }
@@ -63,7 +63,7 @@ internal fun HomeScreen(go: (Page) -> Unit,onSelect:(String)->Unit) {
 
 @Composable
 private fun HomeIntroduction(go: (Page) -> Unit) {
-    Text("TAGO · 타고, 나눠", color = Blue, fontSize = 12.sp)
+    Text("TAGO · 타고, 나눠", color = Blue, fontSize = 15.sp)
     Text("여행은 함께.\n정산은 가볍게.", fontSize = 38.sp, lineHeight = 46.sp, fontWeight = FontWeight.Bold)
     Text("출발부터 도착까지 기록하고,\n함께 탄 만큼 편하게 나눠요.",color=Muted,fontSize=16.sp,lineHeight=25.sp)
     Action("새 여행 준비",modifier=Modifier.widthIn(min=240.dp),arrow=true) { go(Page.Prepare) }

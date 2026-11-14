@@ -1,16 +1,83 @@
-plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id("org.jetbrains.kotlin.plugin.compose") }
-android {
- namespace = "com.gatita"
- compileSdk = 36
- defaultConfig { applicationId = "com.gatita.publishing"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "0.1-publishing" }
- buildFeatures { compose = true }
- compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
- kotlinOptions { jvmTarget = "17" }
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
+
+android {
+    // com.gatita는 임시 패키지명이다. 최종 식별자 확정 시 namespace와 applicationId를 함께 바꾼다.
+    namespace = "com.gatita"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.gatita"
+        // 미확인: Pleos 대상 기기의 최소 API 수준. 확인 전 임시값이다.
+        minSdk = 29
+        targetSdk = 35
+        versionCode = 1
+        versionName = "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            isDebuggable = false
+            isMinifyEnabled = false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        compose = true
+    }
+
+    sourceSets {
+        // MigrationTestHelper가 내보낸 스키마 JSON을 읽을 수 있게 한다.
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
- implementation(platform("androidx.compose:compose-bom:2025.10.00"))
- implementation("androidx.activity:activity-compose:1.11.0")
- implementation("androidx.compose.material3:material3")
- implementation("androidx.compose.ui:ui-tooling-preview")
- debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.kotlinx.coroutines.android)
+
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.savedstate)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.zxing.core)
+    implementation(libs.pleos.vehicle)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.room.testing)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 }

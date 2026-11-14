@@ -1,1 +1,29 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="TAGO · 퍼블리싱" android:theme="@style/Theme.Tago" android:allowBackup="false" android:supportsRtl="true"><activity android:name=".MainActivity" android:exported="true" android:screenOrientation="sensorLandscape" android:resizeableActivity="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Pleos Vehicle SDK 읽기 권한(공식 Odometer·Fuel API 문서 기준). 쓰기(CONTROL_*) 권한은 선언하지 않는다. -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />
+    <!-- 인터넷 권한을 선언하지 않는다. 노출되는 컴포넌트는 런처 진입 Activity 하나뿐이다. -->
+
+    <application
+        android:name=".GatitaApplication"
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Gatita">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="sensorLandscape"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

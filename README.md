@@ -1,24 +1,47 @@
 # 같이타 정산 (TagoNaNua)
 
-Pleos 차량의 주행거리와 연비를 바탕으로 예상 유류비를 계산하고 동승자별 분담액을 공유하는 차량 앱입니다.
+한 차로 이동한 여행의 비용을 인원수로 나누고 공유하는 차량 앱입니다. 현재 앱은 사용자가 입력한 **실제 결제 금액**(주유·주차·톨비·기타)을 합산해 분담액을 계산합니다(`payments-v1`). 정산 규칙은 구간별 유류비 방식(`fuel-segments-v2`: 총액 = Σ(주유 구간 사용량 × 입력 단가) + 기타 비용)으로 바뀌기로 확정되었고, 새 여행은 이 방식으로 시작하도록 구현했습니다(검증 범위는 아래 참고)([결정 기록](.codex/docs/decisions.md)). 주유량(L)은 현재 금액÷단가로 표시만 합니다.
 
 ## 현재 상태
 
-최신 HTML 시안을 기반으로 Jetpack Compose 퍼블리싱 앱을 추가했습니다. 홈, 출발 준비/인트로, 여행 기록/복원/완료, 비용 종류/입력/내역, 정산 목록/상세, 여행 내역, 설정의 14개 화면을 샘플 데이터로 확인할 수 있습니다.
+결제액 방식(`payments-v1`)의 핵심 흐름과, 새 여행에 쓰는 구간별 유류비 방식(`fuel-segments-v2`)의 계산기·차량 값 수집(Pleos 폴링)·Room v5 저장·화면(주유 이벤트 "주유 아님", FUEL 비용 "감지 안 됨", 종료 조건, 구간별 근거, 직접 입력 단가)이 작성되어 있습니다. 2026-11-12에 `:app:assembleDebug`(첫 빌드의 컴파일 오류 3건 수정 후 성공), `:app:testDebugUnitTest`(158건 통과), `:app:lintDebug`(통과), `:app:connectedDebugAndroidTest`(Pleos 에뮬레이터 `Pleos_Connect_v2.1`, 49건 통과)를 실제로 실행했다. 기기 테스트에는 Room 마이그레이션, 구간별 유류비 저장·확정 롤백·불변 트리거, 새 화면의 문구·상태 렌더링이 포함된다. 에뮬레이터 결과이며 실제 차량 값(연료 %·연비·기어), 시동 사이클 중 기록 유지, 실기기 마이그레이션, 화면의 시각 확인(스크린샷 검토)은 검증하지 않았다.
 
-**UI 검토용 앱입니다.** Room, 차량 SDK, 저장, 실제 정산 계산은 연결하지 않았습니다. 입력·선택·화면 전환만 제공하며 금액은 고정 샘플입니다. 출발 인트로는 입력한 여행 이름과 앱 로고를 표시하고 3.32초 후 전환을 시작합니다. 바로 기록 보기로 건너뛸 수 있습니다.
+- 비용 등록·수정·삭제와 정산 포함/제외 선택(FUEL/PARKING/TOLL/OTHER)
+- 운전자 포함/제외, 인원 1~8명, 나머지를 순서대로 1원씩 배분하는 정수 원 분담
+- 정산 미리보기와 확정(제외 비용까지 복사한 스냅샷, 확정 후 수정 불가), 정산 요약 텍스트 QR
+- 월별 내역과 상태 필터, 앱 재실행 시 진행 중 여행 복구
+- 실수로 시작한 빈 여행 닫기: 구간·비용·기록 거리가 모두 없는 진행 중 여행만 확인 후 삭제하고 홈으로 이동(기록이 있거나 완료·확정된 여행은 삭제하지 않음)
+- Room 스키마 v4. v1 추정 정산은 삭제하지 않고 "옛 추정 정산"으로 구분해 읽기 전용으로 표시합니다.
 
-### 빌드 및 미리보기
+거리·연비 수동 입력 UI는 제거했습니다. 새 여행은 VehicleDataSource의 PLEOS 측정값(`PleosVehicleDataSource`, 계기판 주행거리)으로 시작합니다. 값을 읽지 못하면 연결 대기 안내 후 시작을 보류하며, 임의의 0km나 샘플값으로 대체하지 않습니다. Android Studio에서 동작을 확인했으나(사용자 보고) 확인 범위는 기록하지 않았고 실차는 확인하지 않았습니다. 연비는 단위·집계 기준이 확인되지 않아 읽지 않습니다. 기존 수동 기록은 보존합니다. 실제 시동/구간 자동 수신은 아직 미구현입니다. QR은 정산 요약 텍스트일 뿐 송금·입금 확인이 아니며 암호화나 접근 제어도 아닙니다.
 
-JDK 17 이상과 Android SDK 36이 필요합니다. Android Studio에서 이 폴더를 열고 Gradle Sync 후 app을 실행하세요. 앱 식별자는 기존 앱과 구분하는 `com.gatita.publishing`입니다.
+## 검증 상태
 
-```sh
-./gradlew :app:assembleDebug :app:lintDebug
+2026-11-09 전체 연결 작업에서 JUnit·Room/Compose 기기 테스트·Lint·태블릿 직접 QA를 실행했다. 최신 수치와 재현 시나리오는 [전체 연결 검수](.codex/docs/full-integration-qa-2026-11-09.md)를 따른다. 이전 버전의 결과를 현재 결과로 대신하지 않는다.
+
+## 제한 사항
+
+- 실제 차량 PARKED·시동·거리 신호 및 command_receipts 범용 멱등 테이블은 미구현입니다. 등록/확정은 기존 requestId로 중복 방지합니다.
+- 목록 삭제는 여행·정산 목록에서 숨기는 방식입니다. 확정·legacy 원본의 영구 삭제는 제공하지 않습니다.
+- 실제 차량 데이터·권한·시동 OFF 동작·휴대폰 QR 리더의 한글 표시는 확인하지 않았습니다.
+- v1에서 올라온 여행의 날짜는 UTC 기준으로 보정했고(v1은 시간대를 저장하지 않음), 인원은 옛 정산의 인원 또는 1명입니다.
+- 외부 서버, 로그인, 결제, 송금·입금 확인, 클라우드 동기화는 범위에 없습니다.
+
+## 빌드 및 검증
+
+조건: JDK 17, Android SDK(platform 35). Gradle은 저장소의 Wrapper(`./gradlew`, Gradle 8.9)를 사용합니다. 라이브러리 버전은 `gradle/libs.versions.toml`에서 관리합니다. 처음 설치하는 경우 [설치 및 실행 가이드](docs/SETUP.md)(Pleos 에뮬레이터 포함)를 따르세요.
+
+```bash
+./gradlew :app:assembleDebug              # debug 빌드 (새 구현에서 실행·성공)
+./gradlew :app:testDebugUnitTest          # JUnit 단위 테스트 (최신 결과는 검수 문서 참고)
+./gradlew :app:lintDebug                  # Android Lint (최신 결과는 검수 문서 참고)
+./gradlew :app:assembleDebugAndroidTest   # 기기 테스트 APK 빌드 (최신 결과는 검수 문서 참고)
+./gradlew :app:connectedDebugAndroidTest  # Room·마이그레이션·화면 테스트, 에뮬레이터/기기 필요 (최신 결과는 검수 문서 참고)
 ```
 
-SDK 경로는 ANDROID_HOME 또는 개인 local.properties로 지정합니다. local.properties는 커밋하지 않습니다. APK는 `app/build/outputs/apk/debug/app-debug.apk`에 생성됩니다. 하단 **퍼블리싱 · 화면 선택**에서 각 화면을 열고 기본/빈 상태/오류/로딩/주행 표시를 확인하세요. 600dp 이상은 사이드 메뉴, 좁은 폭은 하단 메뉴입니다.
-
-구현 범위와 검수 현황은 [.codex/docs/publishing.md](.codex/docs/publishing.md)를 참고하세요.
+- Room 스키마 이력 `app/schemas/com.gatita.data.local.AppDatabase/1.json`~`5.json`은 `MigrationTest`가 사용하므로 버전 관리 대상입니다.
+- DB 버전을 올릴 때는 `data/local/migration/Migrations.kt`에 마이그레이션을 추가합니다. 파괴적 fallback은 사용하지 않습니다.
+- `minSdk`(29)와 패키지명(`com.gatita`)은 임시값입니다.
 
 ## 개발 구성
 
@@ -27,7 +50,7 @@ SDK 경로는 ANDROID_HOME 또는 개인 local.properties로 지정합니다. lo
 | 언어 | Kotlin |
 | UI | Jetpack Compose |
 | 로컬 데이터 저장 | Room / SQLite |
-| 차량 연동 | Pleos Vehicle SDK |
+| 차량 연동 | Pleos Vehicle SDK (주행거리 읽기만 연결, 실차 미확인) |
 | 비동기 처리 | Coroutines / Flow |
 | 코드 편집 | VS Code 또는 Android Studio |
 | 실행 및 디버깅 | Android SDK, JDK, Pleos 에뮬레이터 |
@@ -53,28 +76,37 @@ app/
     │   │   │   ├── repository/      # 저장소 인터페이스
     │   │   │   ├── vehicle/         # 차량 데이터 인터페이스
     │   │   │   ├── calculator/      # 정산 계산 규칙
-    │   │   │   └── usecase/         # 여행 및 정산 처리
+    │   │   │   └── usecase/         # 여행·비용·정산 처리
     │   │   ├── data/
     │   │   │   ├── local/entity/    # Room 테이블
     │   │   │   ├── local/dao/       # DB 조회 및 저장
     │   │   │   ├── local/migration/ # DB 구조 변경
     │   │   │   ├── mapper/          # DB 모델과 도메인 모델 변환
     │   │   │   ├── repository/      # 저장소 구현
-    │   │   │   └── vehicle/         # Pleos 및 샘플 데이터 구현
+    │   │   │   └── vehicle/         # 샘플 데이터 구현(Pleos 구현은 예정)
     │   │   └── feature/
     │   │       ├── home/            # 홈
-    │   │       ├── trip/            # 진행 중 여행
-    │   │       ├── settlement/      # 정산 입력 및 결과
+    │   │       ├── trip/            # 진행 중 여행과 비용 목록
+    │   │       ├── cost/            # 비용 입력
+    │   │       ├── settlement/      # 정산 미리보기·확정
     │   │       ├── history/         # 과거 내역
-    │   │       └── share/           # QR 공유
+    │   │       └── share/           # 결과·QR 공유
     │   └── res/
     │       ├── drawable/           # 이미지와 아이콘
     │       └── values/             # 문자열 등 리소스
-    ├── test/java/com/gatita/        # 정산 및 여행 규칙 단위 테스트
-    └── androidTest/java/com/gatita/ # Room 및 기기 테스트
-gradle/wrapper/                      # Gradle Wrapper 추가 예정
+    ├── test/java/com/gatita/        # 단위 테스트(현재 결제액 방식과 legacy 회귀 검증)
+    └── androidTest/java/com/gatita/ # Room 및 기기 테스트(현재 결제액 방식과 legacy 회귀 검증)
+gradle/wrapper/                      # Gradle Wrapper
 ```
 
-`com.gatita`는 폴더 구성을 위한 임시 패키지명입니다. 앱 식별자와 최종 패키지명은 Android 프로젝트 설정 시 확정합니다. 빈 폴더의 `.gitkeep`은 Git에 폴더를 보존하기 위한 파일입니다.
+`com.gatita`는 임시 패키지명이며 앱 식별자와 최종 패키지명은 추후 확정합니다.
 
 상세 기획·설계·테스트·보안 문서는 [옵시디언 보관함](.codex/docs/index.md)에서 관리합니다. Obsidian의 **폴더를 보관함으로 열기**에서 이 프로젝트의 `.codex/docs/`를 선택하세요. Codex는 [AGENTS.md](AGENTS.md)에 연결된 같은 문서를 읽습니다.
+
+## 퍼블리싱 UI와 기능 연결
+
+실제 런처(`com.gatita`)에 TAGO 태블릿 레이아웃을 적용하고 기존 Room 기반 기능을 연결했습니다. 여행 시작·복구, 비용 추가/수정/삭제/포함 선택, 정산 확정·요약·QR, 월별 내역은 실제 데이터로 동작합니다. `PublishingApp`은 별도의 샘플 Preview로만 유지하며 실제 런처에 샘플 검수 툴바를 표시하지 않습니다.
+
+차량 SDK는 미연결이므로 자동 주행/시동 인식 대신 수동 기록임을 표시합니다. 설정(이름·운전자 기본값·화면 모드)은 영구 저장됩니다. 수동 일시정지/재개와 재실행 복구, 내역 목록 삭제를 지원합니다. 목록 삭제는 확정 원본을 보존합니다.
+
+[연결 범위와 검수 기록](.codex/docs/publishing-integration-2026-11-09.md)을 참고하세요. 기존 퍼블리싱 문서의 APK 식별자와 빌드 설정은 독립 시안 앱 기준입니다.

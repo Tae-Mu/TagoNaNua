@@ -1,6 +1,42 @@
-# TAGO HTML 기준 API·함수·테이블 명세 v0.1
+# TAGO HTML 기준 API·함수·테이블 명세 v0.2
 
-작성일: 2026-11-08. 상태: 구현 전 설계 초안. Compose 퍼블리싱 완료나 실제 차량 연동 완료를 의미하지 않는다.
+작성일: 2026-11-08. 갱신: 2026-11-10. **HTML 설계 계약과 실제 구현 매핑을 함께 관리**한다. 아래 0장은 현재 앱 기준이며, 1장 이후의 최초 제안 계약/테이블은 이름과 구조가 실제 코드와 다를 수 있다. 이 문서 전체가 구현 완료라는 뜻은 아니다.
+
+## 0. 현재 개발·퍼블리싱 구현
+
+실제 앱 `com.gatita`는 Room v4로 기능을 연결했다. 화면별 버튼·레이아웃·디자인 시스템·모션은 [화면·퍼블리싱 명세](publishing.md), 최신 화면 검수는 [UI 재정렬](ui-parity-2026-11-10.md), 기능·엣지케이스는 [전체 연결 검수](full-integration-qa-2026-11-09.md)를 따른다.
+
+### 실제 함수와 저장 매핑
+
+아래는 앱 내부 Kotlin UseCase이며 HTTP 엔드포인트가 아니다. 화면은 ViewModel을 통해 호출한다. 구현 위치는 `app/src/main/java/com/gatita/domain/usecase/`다.
+
+| 사용자 액션 | 실제 함수/UseCase | 데이터 |
+|---|---|---|
+| 여행 시작/복원 | VehicleDataSource.readSnapshot → StartTripUseCase / RestoreActiveTripUseCase | PLEOS 성공값만 사용. 연결 전 시작 보류. trips, activeSlot 유일 제약 |
+| 구간 저장 계약 | SaveSegmentUseCase | segments 및 trips의 기록/revision. 수동 입력 UI 제거, SDK 자동 이벤트 연결 미구현 |
+| 잠시 멈추기/이어가기 | SetTripPausedUseCase(tripId, paused) | trip_sessions.pausedAt; IN_PROGRESS 유지 |
+| 여행 완료 | CompleteTripUseCase | trips → FINISHED; 완료 안내는 UI 상태 |
+| 빈 여행 닫기 | DiscardEmptyTripUseCase | 구간·비용·거리 없는 IN_PROGRESS만 트랜잭션 재검사 후 삭제 |
+| 비용 목록 | ObserveCostLedgerUseCase | costs, 등록/포함/제외 합계 및 종류별 소계 |
+| 비용 추가/수정 | AddCostUseCase / UpdateCostUseCase | costs, trips.revision. 비용 입력은 CostFormViewModel에서 검증 결과 표시 |
+| 비용 포함/삭제 | SetCostIncludedUseCase / DeleteCostUseCase | 미확정 비용만 변경, ledger 갱신 |
+| 인원/운전자 정책 | UpdateSplitPolicyUseCase | trips.people/includeDriver/revision |
+| 정산 확인/확정 | PreviewPaymentSettlementUseCase / ConfirmPaymentSettlementUseCase | payment_settlements, payment_settlement_costs, payment_settlement_shares; trips → SETTLED |
+| 확정 결과/공유 | GetSettlementRecordUseCase / BuildPaymentSummaryUseCase | 저장 스냅샷 조회, 요약 텍스트·QR. 실제 송금 없음 |
+| 정산 목록/월별 내역 | ObserveSettlementListUseCase / ObserveTripHistoryUseCase | trips·비용·정산 조회; hidden 여행 제외 |
+| 완료 여행 목록 삭제 | HideTripUseCase(tripId) | trip_sessions.hidden=1. 비용/확정 원본 보존 |
+| 설정 저장/초기화 | SaveSettingsUseCase, SettingsViewModel.save(reset) | app_settings 싱글턴. 초기화는 설정만 변경 |
+
+### 설계와 실제 구현 차이
+
+- 식별자는 UUID 대신 Long 자동증가 ID다. 실제 상태는 IN_PROGRESS/FINISHED/SETTLED이며 PAUSED는 별도 enum이 아니다.
+- 여행 1 : 비용 0~N, 포함한 실제 결제액 합산, 운전자 포함/제외 및 정수 원 나머지 배분이 구현됐다. 주유량은 표시 전용이다.
+- 확정은 expectedRevision 검증과 불변 스냅샷 저장을 사용한다. 등록/확정 중복 방지는 costs/payment_settlements의 requestId로 처리한다. 제안의 범용 command_receipts는 없다.
+- 일반 완료 여행은 목록 숨김이며 영구 삭제가 아니다. 확정/legacy 원본은 보존한다. 빈 진행 중 여행 폐기만 별도 허용한다.
+- 설정 v3, 여행 세션 v4까지 구현했다. v1 추정 정산은 legacy로 읽기 전용 보존한다.
+- 차량 PARKED 확인에 의한 편집 차단, 실제 Pleos 신호/시동 OFF 자동 저장, 자동 카드·하이패스 수집은 미구현이다. 거리 수동 입력 UI를 제거했다. SDK 수신 실패 시 시작 보류하며 0km로 대체하지 않는다.
+- 이번 퍼블리싱 보정은 화면·표현·이동을 변경했으며 DB 버전과 정산 계산 규칙은 변경하지 않았다.
+
 
 ## 1. 기준과 범위
 
@@ -22,13 +58,15 @@
 | 주유량 | 결제액÷리터당 가격, 소수점 3자리 표시. 정산에 주유량을 다시 곱하지 않음 |
 | 운전자 포함 | ON 전체 인원, OFF 운전자 0원/동승자만 분담. 1명은 ON 강제 |
 | 확정 | 비용 전체(제외 항목 포함), 인원, 분담액, 표시 이름을 복사하여 고정 |
-| 삭제 | 미확정/확정 완료 여행 모두 사용자 확인 후 여행·비용·정산을 함께 삭제 |
+| 삭제 | 실제 구현은 완료 여행의 목록 숨김(hidden). 비용·확정 원본은 보존하며, 빈 진행 중 여행만 별도 폐기 |
 | 설정 | 표시 이름, 새 여행의 정산 기본값, 화면 모드. 기존 확정 내역 변경 금지 |
 | 등록 후 이동 | 기록에서 진입하면 기록/멈춤 화면, 내역에서 진입하면 내역으로 복귀 |
 
-기존 `planning.md`, `architecture.md`, `database.md`, `testing.md`의 예상 유류비·fuel_prices·구간별 정산 계산은 이전 설계다. 이 문서는 **최신 HTML의 결제액 방식에 대한 후속 구현 기준 초안**이며 기존 문서를 무단으로 덮어쓰지 않는다. 실제 개발 착수 시 해당 문서를 결제액 방식으로 함께 개정해야 한다.
+`planning.md`, `architecture.md`, `database.md`, `testing.md`, `decisions.md`는 2026-11-09에 이 결제액 방식을 현재 제품으로 하여 개정했다. 예상 유류비·fuel_prices·구간별 정산 계산은 이전 설계이며 v1 이력(legacy)으로만 남는다. 이 문서는 후속 구현 기준이며 위 "구현 현황"에 적은 미구현 제안은 여전히 설계 상태다.
 
-## 3. 상태와 사용자 흐름
+## 3. 최초 설계의 상태와 사용자 흐름
+
+아래 상태도와 PARKED/검증된 OFF 조건은 최초 설계 표현이다. 실제 상태·수동 세션·숨김 동작은 0장과 [화면 명세](publishing.md)를 따른다.
 
 ```mermaid
 stateDiagram-v2
@@ -50,7 +88,9 @@ stateDiagram-v2
 - 비용 작성/수정은 RECORDING/PAUSED/COMPLETED에서 허용하되 차량은 PARKED여야 한다. SETTLED는 읽기 전용이다.
 - UI 복귀 대상 `returnTo=TRIP|COST_LIST|SETTLEMENT_DETAIL`은 내비게이션 상태이며 DB 컬럼이 아니다.
 
-## 4. 공통 타입과 입력 검증
+## 4. 설계 계약의 공통 타입과 입력 검증
+
+아래 UUID·CommandMeta·AppResult 이름은 설계용이다. 실제 Long ID·DomainResult·개별 Command와의 매핑은 0장을 우선한다.
 
 | 필드 | 타입 / 규칙 |
 |---|---|

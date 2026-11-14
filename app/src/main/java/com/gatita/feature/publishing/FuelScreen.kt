@@ -24,12 +24,12 @@ import com.gatita.core.ui.theme.*
  var date by rememberSaveable{mutableStateOf("2026-11-08")}
  var dateOpen by remember{mutableStateOf(false)}
  Panel(Modifier.fillMaxWidth().animateContentSize()){
-  Surface(color=Tint,shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth()){Text(tripName,Modifier.padding(14.dp),color=Blue,fontSize=13.sp)}
+  Surface(color=Tint,shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth()){Text(tripName,Modifier.padding(14.dp),color=Blue,fontSize=15.sp)}
   Row(horizontalArrangement=Arrangement.spacedBy(20.dp)){
    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp)){MoneyInput("결제 금액",amount,{amount=it},"50,000","원");Note("주유 영수증의 총 결제 금액이에요.")}
    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp)){MoneyInput("1L당 가격",price,{price=it},"1,890","원 / L");Note("영수증에 표시된 리터당 가격이에요.")}
   }
-  Surface(color=Tint,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(16.dp)){Text("계산한 주유량",Modifier.weight(1f),color=Muted,fontSize=13.sp);Text(if(amount.isBlank()||price.isBlank())"금액과 단가를 입력해 주세요" else "주유량 표시 · 계산 연동 전",color=Blue,fontSize=14.sp)}}
+  Surface(color=Tint,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(16.dp)){Text("계산한 주유량",Modifier.weight(1f),color=Muted,fontSize=15.sp);Text(if(amount.isBlank()||price.isBlank())"금액과 단가를 입력해 주세요" else "주유량 표시 · 계산 연동 전",color=Blue,fontSize=16.sp)}}
   Surface(onClick={details=!details},shape=RoundedCornerShape(12.dp),border=BorderStroke(1.dp,Line)){
    Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)){Text("주유 상세 정보   선택",fontWeight=FontWeight.SemiBold);Note("주유소와 날짜를 함께 남겨요")};Text(if(details)"⌃" else "⌄",color=Blue,fontSize=24.sp)}
   }
@@ -43,7 +43,7 @@ import com.gatita.core.ui.theme.*
 @Composable internal fun MoneyInput(label:String,value:String,onValue:(String)->Unit,placeholder:String,unit:String){
  val invalid=value.isNotBlank() && value.toLongOrNull()?.let{it in 1..10000000}!=true
  Column(Modifier.animateContentSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
-  Text(label,color=Muted,fontSize=14.sp)
-  OutlinedTextField(value,onValue,isError=invalid,supportingText=if(invalid){{Text("1~10,000,000 사이의 정수를 입력해 주세요.")}}else null,singleLine=true,placeholder={Text(placeholder,fontSize=32.sp,color=Muted.copy(alpha=.55f))},suffix={Text(unit,color=Muted,fontSize=14.sp)},textStyle=TextStyle(fontFamily=Suit,fontSize=32.sp,color=Ink),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),shape=RoundedCornerShape(12.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.background,unfocusedBorderColor=Line,focusedBorderColor=Blue),modifier=Modifier.fillMaxWidth())
+  Text(label,color=Muted,fontSize=16.sp)
+  OutlinedTextField(value,onValue,isError=invalid,supportingText=if(invalid){{Text("1~10,000,000 사이의 정수를 입력해 주세요.")}}else null,singleLine=true,placeholder={Text(placeholder,fontSize=32.sp,color=Muted.copy(alpha=.55f))},suffix={Text(unit,color=Muted,fontSize=16.sp)},textStyle=TextStyle(fontFamily=Suit,fontSize=32.sp,color=Ink),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),shape=RoundedCornerShape(12.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.background,unfocusedBorderColor=Line,focusedBorderColor=Blue),modifier=Modifier.fillMaxWidth())
  }
 }

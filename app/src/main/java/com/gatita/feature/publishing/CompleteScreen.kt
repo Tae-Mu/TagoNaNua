@@ -15,7 +15,7 @@ import com.gatita.core.ui.theme.*
  Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.TopCenter){
   Column(Modifier.widthIn(max=700.dp).fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
    Brand(false)
-   Text("함께한 여정, 기록 완료",color=Blue,fontSize=12.sp)
+   Text("함께한 여정, 기록 완료",color=Blue,fontSize=15.sp)
    Text("안전하게 도착했어요",fontSize=36.sp,fontWeight=FontWeight.Bold)
    Note("수고했어요. 함께한 여행을 돌아볼까요?")
    MotionSection(true,180,14f){

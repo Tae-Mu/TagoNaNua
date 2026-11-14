@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.gatita.navigation
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
@@ -70,9 +72,9 @@ confirmAction=action},dark,{dark=it},tripName,people,{name,count->tripName=name;
  }
  if(!wide)NavigationBar{listOf(Page.Home,Page.Settlement,Page.History,Page.Settings).forEach{p->NavigationBarItem(selected=page==p,onClick={go(p)},icon={Icon(painterResource(navIcon(p)),null)},label={Text(p.title)})}}
  Surface(tonalElevation=2.dp){FlowRow(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=6.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
- TextButton({picker=true}){Text("퍼블리싱 · 화면 선택",fontSize=12.sp)}
- TextButton({toolsExpanded=!toolsExpanded}){Text(if(toolsExpanded)"검수 옵션 접기" else "검수 옵션 펼치기",fontSize=12.sp)}
- if(toolsExpanded)SampleState.entries.forEach{s->FilterChip(sample==s,{sample=s},label={Text(s.label,fontSize=11.sp)})}
+ TextButton({picker=true}){Text("퍼블리싱 · 화면 선택",fontSize=15.sp)}
+ TextButton({toolsExpanded=!toolsExpanded}){Text(if(toolsExpanded)"검수 옵션 접기" else "검수 옵션 펼치기",fontSize=15.sp)}
+ if(toolsExpanded)SampleState.entries.forEach{s->FilterChip(sample==s,{sample=s},label={Text(s.label,fontSize=16.sp)})}
  }}
  }
  if(departing)DepartureScreen(tripName,onReveal={revealTrip=true},onFinished={departing=false})
